@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../Utilities/supabaseClient';
 import ExamForm from './ExamForm';
-
+import './App.css';
 // دالة لتحويل رابط YouTube إلى صيغة embed
 const getYoutubeEmbedUrl = (url) => {
   const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/;
