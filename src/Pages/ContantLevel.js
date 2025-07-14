@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../Utilities/supabaseClient';  // تأكد من المسار الصحيح
 import { useParams, useNavigate } from 'react-router-dom';  // لاستخراج المعرف من URL
-
+import '../App.css'; // ← هنا استيراد الأنماط
 const ContantLevel = () => {
   const { id } = useParams();  // استخراج `id` من URL
   const [courses, setCourses] = useState([]);  // لتخزين الدورات الخاصة بالمستوى
