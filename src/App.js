@@ -1,7 +1,8 @@
 // src/App.js
 import React, { useEffect, useState } from "react";
-import { HashRouter as Router, Route, Routes } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import './App.css';
+
 import Login from './Pages/Login';
 import Signup from './Pages/Signup';
 import Goals from './Pages/Goals';
@@ -12,11 +13,11 @@ import Courses from "./Pages/Courses";
 import CourseLessons from './Pages/CourseLessons';
 import LessonPage from './Pages/LessonPage';
 import AdminDashboard from "./Pages/AdminPagde/AdminDashboard";
-import 'react-toastify/dist/ReactToastify.css';
-import { ToastContainer, toast } from 'react-toastify';
 import ContantLevel from "./Pages/ContantLevel";
 
-// Spinner Component
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from 'react-toastify';
+
 const Spinner = () => (
   <div className="fixed inset-0 bg-[#FFF9EF] flex items-center justify-center z-50">
     <div className="w-16 h-16 border-4 border-[#665446] border-t-transparent rounded-full animate-spin"></div>
@@ -28,91 +29,84 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
 
+  // استخدم basename ديناميكيًا: فارغ في التطوير، وPUBLIC_URL في الإنتاج
+  const basename = process.env.NODE_ENV === 'production'
+    ? process.env.PUBLIC_URL
+    : '';
+
   const playSound = () => {
     if (!isMuted && userHasInteracted) {
-      const sound = new Audio('/sound/notification-sound-effect-372475.mp3');
-      sound.play().catch((e) => {
+      const sound = new Audio(
+        `${process.env.PUBLIC_URL}/sound/notification-sound-effect-372475.mp3`
+      );
+      sound.play().catch(e => {
         console.warn("المتصفح منع تشغيل الصوت:", e.message);
       });
     }
   };
 
-  const toggleMute = () => {
-    setIsMuted(prev => !prev);
-  };
+  const toggleMute = () => setIsMuted(m => !m);
 
-  // Spinner loading simulation
   useEffect(() => {
-    const fakeLoad = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-    return () => clearTimeout(fakeLoad);
+    const timer = setTimeout(() => setIsLoading(false), 2000);
+    return () => clearTimeout(timer);
   }, []);
 
-  // Detect first user interaction
   useEffect(() => {
-    const handleInteraction = () => {
+    const onFirst = () => {
       setUserHasInteracted(true);
-      window.removeEventListener("click", handleInteraction);
-      window.removeEventListener("scroll", handleInteraction);
+      window.removeEventListener("click", onFirst);
+      window.removeEventListener("scroll", onFirst);
     };
-    window.addEventListener("click", handleInteraction);
-    window.addEventListener("scroll", handleInteraction);
+    window.addEventListener("click", onFirst);
+    window.addEventListener("scroll", onFirst);
+    return () => {
+      window.removeEventListener("click", onFirst);
+      window.removeEventListener("scroll", onFirst);
+    };
   }, []);
 
-  // Toasts with delay
   useEffect(() => {
-    const prayerToast = setTimeout(() => {
-      toast.info('صلي على النبي ﷺ', {
-        onOpen: playSound,
-        onClick: () => setIsMuted(true),
-      });
-    }, 0);
-
-    const dhikrToast = setTimeout(() => {
-      toast.info('سبحان الله وبحمده، سبحان الله العظيم', {
-        onOpen: playSound,
-        onClick: () => setIsMuted(true),
-      });
-    }, 420000); // 7 min
-
-    const saphToast = setTimeout(() => {
-      toast.info('سبح لله ما في السموات و الأرض', {
-        onOpen: playSound,
-        onClick: () => setIsMuted(true),
-      });
-    }, 840000); // 14 min
-
+    if (!userHasInteracted) return;
+    const p = toast.info('صلي على النبي ﷺ', { onOpen: playSound, onClick: () => setIsMuted(true) });
+    const d = setTimeout(() =>
+      toast.info('سبحان الله وبحمده، سبحان الله العظيم', { onOpen: playSound, onClick: () => setIsMuted(true) }),
+      420000
+    );
+    const s = setTimeout(() =>
+      toast.info('سبح لله ما في السموات و الأرض', { onOpen: playSound, onClick: () => setIsMuted(true) }),
+      840000
+    );
     return () => {
-      clearTimeout(prayerToast);
-      clearTimeout(dhikrToast);
-      clearTimeout(saphToast);
+      toast.dismiss(p);
+      clearTimeout(d);
+      clearTimeout(s);
     };
   }, [isMuted, userHasInteracted]);
 
   return (
-    <Router>
+    <Router basename={basename}>
       {isLoading && <Spinner />}
       <ToastContainer />
-      <div className="App bg-[#FFF9EF] min-h-screen relative flex flex-col">
+      <div className="App bg-[#FFF9EF] min-h-screen flex flex-col">
         <NaveBr />
         <div className="flex-grow">
           <Routes>
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/courses" element={<Courses />} />
             <Route path="/" element={<HomeLand />} />
-            <Route path="/goals" element={<Goals />} />
-            <Route path="/contentLevel/:id" element={<ContantLevel />} />
-            <Route path="/lesson/:id" element={<LessonPage />} />
+            <Route path="/courses" element={<Courses />} />
             <Route path="/course/:id" element={<CourseLessons />} />
+            <Route path="/lesson/:id" element={<LessonPage />} />
+            <Route path="/contentLevel/:id" element={<ContantLevel />} />
+            <Route path="/goals" element={<Goals />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
           </Routes>
         </div>
 
         <button
           onClick={toggleMute}
-          className="fixed top-5 right-5 p-3 mt-12 bg-[#665446] text-white rounded-md z-50"
+          className="fixed top-5 right-5 p-3 bg-[#665446] text-white rounded-md z-50"
         >
           {isMuted ? 'تشغيل الصوت' : 'إيقاف الصوت'}
         </button>
