@@ -1,0 +1,29 @@
+{
+  "files": {
+    "main.css": "/wahtel3ilm-school/static/css/main.370574a4.css",
+    "main.js": "/wahtel3ilm-school/static/js/main.1058f95a.js",
+    "static/js/453.e16ed3ab.chunk.js": "/wahtel3ilm-school/static/js/453.e16ed3ab.chunk.js",
+    "static/media/Oclock.png": "/wahtel3ilm-school/static/media/Oclock.5d399a7d0ac782943c8b.png",
+    "static/media/HandShak.png": "/wahtel3ilm-school/static/media/HandShak.cef229374b33b04820d4.png",
+    "static/media/Book.png": "/wahtel3ilm-school/static/media/Book.ca42b85c766213ac590e.png",
+    "static/media/Screenshot__320_-removebg-preview.png": "/wahtel3ilm-school/static/media/Screenshot__320_-removebg-preview.f0b92facd8962f40abec.png",
+    "static/media/Right.png": "/wahtel3ilm-school/static/media/Right.1344629be379477e426d.png",
+    "static/media/asoulfeqh.png": "/wahtel3ilm-school/static/media/asoulfeqh.edf88e2fb5d888cf8582.png",
+    "static/media/arapick.png": "/wahtel3ilm-school/static/media/arapick.7337c05b1ae3abcbf6f3.png",
+    "static/media/Mousic.png": "/wahtel3ilm-school/static/media/Mousic.5fe2a5ee2a01c4bc34be.png",
+    "static/media/Man.png": "/wahtel3ilm-school/static/media/Man.53724815f99596d2db1a.png",
+    "static/media/maasge.png": "/wahtel3ilm-school/static/media/maasge.249008e77db3f8cd955b.png",
+    "static/media/slick.svg": "/wahtel3ilm-school/static/media/slick.2630a3e3eab21c607e21.svg",
+    "static/media/slick.eot": "/wahtel3ilm-school/static/media/slick.a4e97f5a2a64f0ab1323.eot",
+    "static/media/slick.ttf": "/wahtel3ilm-school/static/media/slick.c94f7671dcc99dce43e2.ttf",
+    "static/media/slick.woff": "/wahtel3ilm-school/static/media/slick.295183786cd8a1389865.woff",
+    "index.html": "/wahtel3ilm-school/index.html",
+    "main.370574a4.css.map": "/wahtel3ilm-school/static/css/main.370574a4.css.map",
+    "main.1058f95a.js.map": "/wahtel3ilm-school/static/js/main.1058f95a.js.map",
+    "453.e16ed3ab.chunk.js.map": "/wahtel3ilm-school/static/js/453.e16ed3ab.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.370574a4.css",
+    "static/js/main.1058f95a.js"
+  ]
+}
