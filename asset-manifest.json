@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/khaledmagde1811/wahtel3ilm-school/static/css/main.259ca690.css",
-    "main.js": "/khaledmagde1811/wahtel3ilm-school/static/js/main.3b432546.js",
+    "main.css": "/khaledmagde1811/wahtel3ilm-school/static/css/main.0afe69eb.css",
+    "main.js": "/khaledmagde1811/wahtel3ilm-school/static/js/main.08048639.js",
     "static/js/453.e16ed3ab.chunk.js": "/khaledmagde1811/wahtel3ilm-school/static/js/453.e16ed3ab.chunk.js",
     "static/media/Oclock.png": "/khaledmagde1811/wahtel3ilm-school/static/media/Oclock.5d399a7d0ac782943c8b.png",
     "static/media/HandShak.png": "/khaledmagde1811/wahtel3ilm-school/static/media/HandShak.cef229374b33b04820d4.png",
@@ -18,12 +18,12 @@
     "static/media/slick.ttf": "/khaledmagde1811/wahtel3ilm-school/static/media/slick.c94f7671dcc99dce43e2.ttf",
     "static/media/slick.woff": "/khaledmagde1811/wahtel3ilm-school/static/media/slick.295183786cd8a1389865.woff",
     "index.html": "/khaledmagde1811/wahtel3ilm-school/index.html",
-    "main.259ca690.css.map": "/khaledmagde1811/wahtel3ilm-school/static/css/main.259ca690.css.map",
-    "main.3b432546.js.map": "/khaledmagde1811/wahtel3ilm-school/static/js/main.3b432546.js.map",
+    "main.0afe69eb.css.map": "/khaledmagde1811/wahtel3ilm-school/static/css/main.0afe69eb.css.map",
+    "main.08048639.js.map": "/khaledmagde1811/wahtel3ilm-school/static/js/main.08048639.js.map",
     "453.e16ed3ab.chunk.js.map": "/khaledmagde1811/wahtel3ilm-school/static/js/453.e16ed3ab.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.259ca690.css",
-    "static/js/main.3b432546.js"
+    "static/css/main.0afe69eb.css",
+    "static/js/main.08048639.js"
   ]
 }
