@@ -679,13 +679,23 @@ const ExamsPage = () => {
   const [correctAnswer, setCorrectAnswer] = useState('');
   const [loading, setLoading] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
-  const [existingExam, setExistingExam] = useState(null); // لحفظ بيانات الاختبار الموجود
+  const [existingExam, setExistingExam] = useState(null);
 
   // جلب المستويات
   useEffect(() => {
     const fetchLevels = async () => {
-      const { data } = await supabase.from('levels').select('id, name');
-      setLevels(data || []);
+      try {
+        const { data, error } = await supabase.from('levels').select('id, name');
+        if (error) {
+          console.error('Error fetching levels:', error);
+          toast.error('فشل في جلب المستويات');
+        } else {
+          setLevels(data || []);
+        }
+      } catch (error) {
+        console.error('Error in fetchLevels:', error);
+        toast.error('حدث خطأ في جلب المستويات');
+      }
     };
     fetchLevels();
   }, []);
@@ -694,16 +704,28 @@ const ExamsPage = () => {
   useEffect(() => {
     if (selectedLevel) {
       const fetchCourses = async () => {
-        const { data } = await supabase
-          .from('courses')
-          .select('id, name')
-          .eq('level_id', selectedLevel);
-        setCourses(data || []);
+        try {
+          const { data, error } = await supabase
+            .from('courses')
+            .select('id, name')
+            .eq('level_id', selectedLevel);
+          
+          if (error) {
+            console.error('Error fetching courses:', error);
+            toast.error('فشل في جلب الدورات');
+          } else {
+            setCourses(data || []);
+          }
+        } catch (error) {
+          console.error('Error in fetchCourses:', error);
+          toast.error('حدث خطأ في جلب الدورات');
+        }
       };
       fetchCourses();
       setSelectedCourse('');
       setLessons([]);
       setSelectedLesson('');
+      resetExamData();
     }
   }, [selectedLevel]);
 
@@ -711,56 +733,114 @@ const ExamsPage = () => {
   useEffect(() => {
     if (selectedCourse) {
       const fetchLessons = async () => {
-        const { data } = await supabase
-          .from('lessons')
-          .select('id, title')
-          .eq('course_id', selectedCourse);
-        setLessons(data || []);
+        try {
+          const { data, error } = await supabase
+            .from('lessons')
+            .select('id, title')
+            .eq('course_id', selectedCourse)
+            .order('id', { ascending: true });
+          
+          if (error) {
+            console.error('Error fetching lessons:', error);
+            toast.error('فشل في جلب المحاضرات');
+          } else {
+            setLessons(data || []);
+          }
+        } catch (error) {
+          console.error('Error in fetchLessons:', error);
+          toast.error('حدث خطأ في جلب المحاضرات');
+        }
       };
       fetchLessons();
       setSelectedLesson('');
+      resetExamData();
     }
   }, [selectedCourse]);
 
-  // جلب الأسئلة الخاصة بالمحاضرة عند اختيار المحاضرة
+  // جلب الاختبار الموجود عند اختيار المحاضرة
   useEffect(() => {
     if (selectedLesson) {
       const fetchExamQuestions = async () => {
-        const { data } = await supabase
-          .from('exams')
-          .select('*')
-          .eq('lesson_id', selectedLesson)
-          .single();
-        
-        if (data) {
-          setExistingExam(data);
-          setExamTitle(data.title || '');
-          setPassingScore(data.passing_score || 85);
-          if (data.questions) {
-            setQuestions(JSON.parse(data.questions));
+        try {
+          const { data, error } = await supabase
+            .from('exams')
+            .select('*')
+            .eq('lesson_id', selectedLesson)
+            .maybeSingle(); // استخدام maybeSingle بدلاً من single
+          
+          if (error) {
+            console.error('Error fetching exam:', error);
+            if (error.code !== 'PGRST116') { // تجاهل خطأ "no rows returned"
+              toast.error('فشل في جلب بيانات الاختبار');
+            }
           }
-        } else {
-          // إذا لم يوجد اختبار، إعادة تعيين القيم
-          setExistingExam(null);
-          setExamTitle('');
-          setPassingScore(85);
-          setQuestions([]);
+          
+          if (data) {
+            console.log('Existing exam found:', data);
+            setExistingExam(data);
+            setExamTitle(data.title || '');
+            setPassingScore(data.passing_score || 85);
+            
+            if (data.questions) {
+              try {
+                const parsedQuestions = JSON.parse(data.questions);
+                setQuestions(Array.isArray(parsedQuestions) ? parsedQuestions : []);
+              } catch (parseError) {
+                console.error('Error parsing questions:', parseError);
+                setQuestions([]);
+              }
+            } else {
+              setQuestions([]);
+            }
+          } else {
+            console.log('No existing exam found for lesson:', selectedLesson);
+            resetExamData();
+          }
+        } catch (error) {
+          console.error('Error in fetchExamQuestions:', error);
+          toast.error('حدث خطأ في جلب بيانات الاختبار');
+          resetExamData();
         }
       };
       fetchExamQuestions();
     } else {
-      // إعادة تعيين القيم عند عدم اختيار محاضرة
-      setExistingExam(null);
-      setExamTitle('');
-      setPassingScore(85);
-      setQuestions([]);
+      resetExamData();
     }
   }, [selectedLesson]);
 
+  // دالة لإعادة تعيين بيانات الاختبار
+  const resetExamData = () => {
+    setExistingExam(null);
+    setExamTitle('');
+    setPassingScore(85);
+    setQuestions([]);
+    setQuestion('');
+    setChoices(['', '', '', '']);
+    setCorrectAnswer('');
+    setEditIndex(null);
+  };
+
   // إضافة أو تعديل سؤال
   const addOrEditQuestion = async () => {
-    if (!question || !correctAnswer || choices.some(choice => choice === '')) {
-      toast.error('يرجى تعبئة جميع الحقول');
+    // التحقق من صحة البيانات
+    if (!question.trim()) {
+      toast.error('يرجى كتابة نص السؤال');
+      return;
+    }
+
+    if (choices.some(choice => choice.trim() === '')) {
+      toast.error('يرجى تعبئة جميع الخيارات');
+      return;
+    }
+
+    if (!correctAnswer.trim()) {
+      toast.error('يرجى تحديد الإجابة الصحيحة');
+      return;
+    }
+
+    // التحقق من أن الإجابة الصحيحة موجودة في الخيارات
+    if (!choices.includes(correctAnswer)) {
+      toast.error('الإجابة الصحيحة يجب أن تكون إحدى الخيارات المكتوبة');
       return;
     }
 
@@ -768,26 +848,42 @@ const ExamsPage = () => {
     
     if (editIndex !== null) {
       newQuestions = [...questions];
-      newQuestions[editIndex] = { question, choices, answer: correctAnswer };
+      newQuestions[editIndex] = { 
+        question: question.trim(), 
+        choices: choices.map(c => c.trim()), 
+        answer: correctAnswer.trim() 
+      };
     } else {
-      newQuestions = [...questions, { question, choices, answer: correctAnswer }];
+      newQuestions = [...questions, { 
+        question: question.trim(), 
+        choices: choices.map(c => c.trim()), 
+        answer: correctAnswer.trim() 
+      }];
     }
 
     setQuestions(newQuestions);
 
     // تحديث قاعدة البيانات فوراً إذا كان هناك اختبار موجود
     if (existingExam) {
-      const { error } = await supabase
-        .from('exams')
-        .update({
-          questions: JSON.stringify(newQuestions)
-        })
-        .eq('id', existingExam.id);
+      try {
+        const { error } = await supabase
+          .from('exams')
+          .update({
+            questions: JSON.stringify(newQuestions),
+            title: examTitle || 'اختبار المحاضرة',
+            passing_score: parseInt(passingScore) || 85
+          })
+          .eq('id', existingExam.id);
 
-      if (error) {
-        toast.error('فشل في حفظ السؤال في قاعدة البيانات');
-        console.error('Error updating question:', error);
-        // إرجاع الحالة السابقة إذا فشل الحفظ
+        if (error) {
+          console.error('Error updating question:', error);
+          toast.error('فشل في حفظ السؤال في قاعدة البيانات');
+          setQuestions(questions); // إرجاع الحالة السابقة
+          return;
+        }
+      } catch (error) {
+        console.error('Error in updating question:', error);
+        toast.error('حدث خطأ أثناء حفظ السؤال');
         setQuestions(questions);
         return;
       }
@@ -797,9 +893,10 @@ const ExamsPage = () => {
       setEditIndex(null);
       toast.success('تم تعديل السؤال بنجاح');
     } else {
-      toast.success('تمت إضافة السؤال');
+      toast.success('تمت إضافة السؤال بنجاح');
     }
     
+    // مسح النموذج
     setQuestion('');
     setChoices(['', '', '', '']);
     setCorrectAnswer('');
@@ -807,54 +904,71 @@ const ExamsPage = () => {
 
   // بدء التعديل على سؤال
   const handleEdit = (idx) => {
-    setEditIndex(idx);
-    setQuestion(questions[idx].question);
-    setChoices([...questions[idx].choices]);
-    setCorrectAnswer(questions[idx].answer);
-    // التمرير إلى نموذج إضافة السؤال
-    document.getElementById('question-form').scrollIntoView({ behavior: 'smooth' });
+    if (idx >= 0 && idx < questions.length) {
+      setEditIndex(idx);
+      setQuestion(questions[idx].question);
+      setChoices([...questions[idx].choices]);
+      setCorrectAnswer(questions[idx].answer);
+      // التمرير إلى نموذج إضافة السؤال
+      setTimeout(() => {
+        document.getElementById('question-form')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
   };
 
   // حذف سؤال
   const handleDelete = async (idx) => {
+    if (idx < 0 || idx >= questions.length) return;
+    
     if (window.confirm('هل أنت متأكد من حذف هذا السؤال؟')) {
       const newQuestions = questions.filter((_, i) => i !== idx);
       setQuestions(newQuestions);
       
       // تحديث قاعدة البيانات فوراً
       if (existingExam) {
-        const { error } = await supabase
-          .from('exams')
-          .update({
-            questions: JSON.stringify(newQuestions)
-          })
-          .eq('id', existingExam.id);
+        try {
+          const { error } = await supabase
+            .from('exams')
+            .update({
+              questions: JSON.stringify(newQuestions)
+            })
+            .eq('id', existingExam.id);
 
-        if (error) {
-          toast.error('فشل في حذف السؤال من قاعدة البيانات');
-          console.error('Error deleting question:', error);
-          // إرجاع السؤال إذا فشل الحذف
+          if (error) {
+            console.error('Error deleting question:', error);
+            toast.error('فشل في حذف السؤال من قاعدة البيانات');
+            setQuestions(questions); // إرجاع السؤال
+            return;
+          }
+        } catch (error) {
+          console.error('Error in deleting question:', error);
+          toast.error('حدث خطأ أثناء حذف السؤال');
           setQuestions(questions);
-        } else {
-          toast.success('تم حذف السؤال بنجاح');
+          return;
         }
-      } else {
-        toast.success('تم حذف السؤال');
       }
       
+      toast.success('تم حذف السؤال بنجاح');
+      
+      // إذا كان السؤال المحذوف هو المُعدَّل حالياً
       if (editIndex === idx) {
         setEditIndex(null);
         setQuestion('');
         setChoices(['', '', '', '']);
         setCorrectAnswer('');
+      } else if (editIndex !== null && editIndex > idx) {
+        // تعديل فهرس التعديل إذا كان السؤال المحذوف قبله
+        setEditIndex(editIndex - 1);
       }
     }
   };
 
   const handleChoiceChange = (index, value) => {
-    const newChoices = [...choices];
-    newChoices[index] = value;
-    setChoices(newChoices);
+    if (index >= 0 && index < 4) {
+      const newChoices = [...choices];
+      newChoices[index] = value;
+      setChoices(newChoices);
+    }
   };
 
   // إلغاء التعديل
@@ -865,57 +979,120 @@ const ExamsPage = () => {
     setCorrectAnswer('');
   };
 
+  // حفظ تعديلات العنوان ودرجة النجاح
+  const updateExamInfo = async () => {
+    if (!existingExam) return;
+    
+    try {
+      const { error } = await supabase
+        .from('exams')
+        .update({
+          title: examTitle || 'اختبار المحاضرة',
+          passing_score: parseInt(passingScore) || 85
+        })
+        .eq('id', existingExam.id);
+
+      if (error) {
+        console.error('Error updating exam info:', error);
+        toast.error('فشل في حفظ معلومات الاختبار');
+      } else {
+        toast.success('تم حفظ معلومات الاختبار');
+      }
+    } catch (error) {
+      console.error('Error in updateExamInfo:', error);
+      toast.error('حدث خطأ أثناء حفظ معلومات الاختبار');
+    }
+  };
+
   // إضافة أو تحديث الامتحان في قاعدة البيانات
   const handleSubmitExam = async () => {
-    if (!selectedLesson || !examTitle || questions.length === 0) {
-      toast.error('يرجى اختيار المحاضرة وإضافة الأسئلة والعنوان');
+    console.log('handleSubmitExam called');
+    console.log('selectedLesson:', selectedLesson);
+    console.log('examTitle:', examTitle);
+    console.log('questions.length:', questions.length);
+    console.log('existingExam:', existingExam);
+
+    // التحقق من صحة البيانات
+    if (!selectedLesson) {
+      toast.error('يرجى اختيار المحاضرة');
+      return;
+    }
+
+    if (!examTitle.trim()) {
+      toast.error('يرجى كتابة عنوان الاختبار');
+      return;
+    }
+
+    if (questions.length === 0) {
+      toast.error('يرجى إضافة أسئلة للاختبار');
+      return;
+    }
+
+    const finalPassingScore = parseInt(passingScore);
+    if (isNaN(finalPassingScore) || finalPassingScore < 1 || finalPassingScore > 100) {
+      toast.error('يرجى إدخال درجة نجاح صحيحة (1-100)');
       return;
     }
 
     const examData = {
-      title: examTitle,
+      title: examTitle.trim(),
       questions: JSON.stringify(questions),
       lesson_id: parseInt(selectedLesson),
-      passing_score: parseInt(passingScore) || 85,
+      passing_score: finalPassingScore,
     };
+
+    console.log('examData:', examData);
 
     setLoading(true);
 
     try {
       if (existingExam) {
+        console.log('Updating existing exam with ID:', existingExam.id);
         // تحديث الاختبار الموجود
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('exams')
           .update(examData)
-          .eq('id', existingExam.id);
+          .eq('id', existingExam.id)
+          .select();
+
+        console.log('Update result:', { data, error });
 
         if (error) {
-          toast.error('فشل في تحديث الاختبار');
-          console.log('Error updating exam:', error);
+          console.error('Error updating exam:', error);
+          toast.error(`فشل في تحديث الاختبار: ${error.message}`);
         } else {
+          console.log('Exam updated successfully:', data);
           toast.success('تم تحديث الاختبار بنجاح');
         }
       } else {
+        console.log('Creating new exam');
         // إضافة اختبار جديد
         const { data, error } = await supabase
           .from('exams')
           .insert([examData])
           .select();
 
+        console.log('Insert result:', { data, error });
+
         if (error) {
-          toast.error('فشل في إضافة الاختبار');
-          console.log('Error inserting exam:', error);
+          console.error('Error inserting exam:', error);
+          toast.error(`فشل في إضافة الاختبار: ${error.message}`);
         } else {
-          toast.success('تم إضافة الاختبار بنجاح');
-          setExistingExam(data[0]);
+          console.log('Exam created successfully:', data);
+          if (data && data.length > 0) {
+            setExistingExam(data[0]);
+            toast.success('تم إضافة الاختبار بنجاح');
+          } else {
+            toast.error('تم إضافة الاختبار لكن لم يتم الحصول على البيانات المرجعة');
+          }
         }
       }
     } catch (error) {
-      toast.error('حدث خطأ أثناء حفظ الاختبار');
-      console.error('Error:', error);
+      console.error('Error in handleSubmitExam:', error);
+      toast.error(`حدث خطأ أثناء حفظ الاختبار: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -969,6 +1146,18 @@ const ExamsPage = () => {
             ))}
           </select>
         </div>
+
+        {/* معلومات الاختبار الموجود */}
+        {selectedLesson && existingExam && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">
+              🔍 اختبار موجود لهذه المحاضرة
+            </h3>
+            <p className="text-blue-700">
+              العنوان: {existingExam.title} | درجة النجاح: {existingExam.passing_score}% | عدد الأسئلة: {questions.length}
+            </p>
+          </div>
+        )}
 
         {/* عرض الأسئلة الموجودة */}
         {selectedLesson && questions.length > 0 && (
@@ -1031,27 +1220,47 @@ const ExamsPage = () => {
             {/* عنوان الاختبار */}
             <div className="mb-4">
               <label className="block text-sm text-[#665446] mb-2">عنوان الاختبار</label>
-              <input
-                type="text"
-                value={examTitle}
-                onChange={(e) => setExamTitle(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#665446]"
-                placeholder="عنوان الاختبار"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={examTitle}
+                  onChange={(e) => setExamTitle(e.target.value)}
+                  className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#665446]"
+                  placeholder="عنوان الاختبار"
+                />
+                {existingExam && (
+                  <button
+                    onClick={updateExamInfo}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                  >
+                    حفظ
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* درجة النجاح */}
             <div className="mb-4">
               <label className="block text-sm text-[#665446] mb-2">درجة النجاح (%)</label>
-              <input
-                type="number"
-                value={passingScore}
-                onChange={(e) => setPassingScore(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#665446]"
-                min={1}
-                max={100}
-                placeholder="85"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={passingScore}
+                  onChange={(e) => setPassingScore(e.target.value)}
+                  className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#665446]"
+                  min={1}
+                  max={100}
+                  placeholder="85"
+                />
+                {existingExam && (
+                  <button
+                    onClick={updateExamInfo}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                  >
+                    حفظ
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* السؤال */}
@@ -1086,13 +1295,21 @@ const ExamsPage = () => {
             {/* الإجابة الصحيحة */}
             <div className="mb-6">
               <label className="block text-sm text-[#665446] mb-2">الإجابة الصحيحة</label>
-              <input
-                type="text"
+              <select
                 value={correctAnswer}
                 onChange={(e) => setCorrectAnswer(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#665446]"
-                placeholder="أدخل الإجابة الصحيحة بالضبط كما كتبتها في الخيارات"
-              />
+              >
+                <option value="">-- اختر الإجابة الصحيحة --</option>
+                {choices.filter(choice => choice.trim()).map((choice, index) => (
+                  <option key={index} value={choice}>
+                    {choice}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-600 mt-1">
+                اكتب الخيارات أولاً، ثم اختر الإجابة الصحيحة من القائمة
+              </p>
             </div>
 
             {/* أزرار إضافة/تعديل السؤال */}
@@ -1119,12 +1336,20 @@ const ExamsPage = () => {
         {/* زر حفظ الاختبار */}
         {selectedLesson && (
           <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <h4 className="font-semibold text-yellow-800 mb-2">📝 معلومات الحفظ:</h4>
+              <ul className="text-sm text-yellow-700 space-y-1">
+                <li>• الأسئلة يتم حفظها تلقائياً عند إضافتها أو تعديلها</li>
+                <li>• هذا الزر يحفظ معلومات الاختبار العامة (العنوان ودرجة النجاح)</li>
+                <li>• إذا لم يكن هناك اختبار موجود، سيتم إنشاء اختبار جديد</li>
+              </ul>
+            </div>
             <button
               onClick={handleSubmitExam}
               className="w-full bg-[#665446] text-white px-6 py-4 rounded-lg hover:bg-opacity-90 transition-colors text-lg font-semibold"
               disabled={loading}
             >
-              {loading ? 'جارٍ الحفظ...' : (existingExam ? 'تحديث الاختبار' : 'إضافة الاختبار')}
+              {loading ? 'جارٍ الحفظ...' : (existingExam ? 'تحديث معلومات الاختبار' : 'إنشاء اختبار جديد')}
             </button>
           </div>
         )}

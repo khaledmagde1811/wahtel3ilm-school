@@ -1,6 +1,5 @@
-// src/App.js
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import './App.css';
 
 import Login from './Pages/Login';
@@ -17,6 +16,7 @@ import ContantLevel from "./Pages/ContantLevel";
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
+import ResetPassword from "./Pages/ResetPassword ";
 
 const Spinner = () => (
   <div className="fixed inset-0 bg-[#FFF9EF] flex items-center justify-center z-50">
@@ -29,7 +29,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
 
-  // استخدم basename ديناميكيًا: فارغ في التطوير، وPUBLIC_URL في الإنتاج
+  // استخدم basename ديناميكيًا: PUBLIC_URL للـ GitHub Pages
   const basename = process.env.NODE_ENV === 'production'
     ? process.env.PUBLIC_URL
     : '';
@@ -88,7 +88,7 @@ function App() {
     <Router basename={basename}>
       {isLoading && <Spinner />}
       <ToastContainer />
-      <div className="App bg-[#FFF9EF] min-h-screen flex flex-col">
+      <div className="App bg-[#CDC0B6] min-h-screen flex flex-col">
         <NaveBr />
         <div className="flex-grow">
           <Routes>
@@ -101,6 +101,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
           </Routes>
         </div>
 

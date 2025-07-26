@@ -6,7 +6,7 @@ import img3 from '../../assets/Pic/Screenshot__320_-removebg-preview.png';
 
 const Benfites = () => {
   return (
-    <div className="bg-[#] min-h-screen py-8 mt-12">
+    <div className="bg-white min-h-screen py-8 mt-12">
       <div className="container mx-auto px-4">
         {/* العنوان الرئيسي */}
         <div className="text-center mb-12">
