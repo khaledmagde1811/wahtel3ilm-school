@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useEffect, useState } from "react";
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import './App.css';
@@ -13,10 +14,10 @@ import CourseLessons from './Pages/CourseLessons';
 import LessonPage from './Pages/LessonPage';
 import AdminDashboard from "./Pages/AdminPagde/AdminDashboard";
 import ContantLevel from "./Pages/ContantLevel";
+import ResetPassword from "./Pages/ResetPassword ";
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
-import ResetPassword from "./Pages/ResetPassword ";
 
 const Spinner = () => (
   <div className="fixed inset-0 bg-[#FFF9EF] flex items-center justify-center z-50">
@@ -28,11 +29,6 @@ function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
-
-  // استخدم basename ديناميكيًا: PUBLIC_URL للـ GitHub Pages
-  const basename = process.env.NODE_ENV === 'production'
-    ? process.env.PUBLIC_URL
-    : '';
 
   const playSound = () => {
     if (!isMuted && userHasInteracted) {
@@ -85,7 +81,7 @@ function App() {
   }, [isMuted, userHasInteracted]);
 
   return (
-    <Router basename={basename}>
+    <Router>
       {isLoading && <Spinner />}
       <ToastContainer />
       <div className="App bg-[#CDC0B6] min-h-screen flex flex-col">
@@ -107,7 +103,7 @@ function App() {
 
         <button
           onClick={toggleMute}
-          className="fixed top-5 right-5 p-3 bg-[#665446] text-white rounded-md z-50"
+          className="fixed top-5 right-5 p-3 bg-[#665446] text-white rounded-md z-50 mt-16"
         >
           {isMuted ? 'تشغيل الصوت' : 'إيقاف الصوت'}
         </button>
