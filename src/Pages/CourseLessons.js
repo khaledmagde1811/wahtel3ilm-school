@@ -146,7 +146,7 @@ const CourseLessons = () => {
                 إنشاء حساب جديد
               </button>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/signup')}
                 className="text-[#665446] underline hover:no-underline"
               >
                 العودة للصفحة الرئيسية
