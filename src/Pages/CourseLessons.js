@@ -124,37 +124,37 @@ const CourseLessons = () => {
   if (!user) {
     return (
       <div className="bg-[#CDC0B6] min-h-screen py-10 px-4">
-        <div className="max-w-md mx-auto text-center mt-20">
-          <div className="bg-[#FFF9EF] rounded-xl shadow-md p-8">
-            <h2 className="text-[#665446] text-3xl font-bold mb-4">
-              تسجيل الدخول مطلوب
-            </h2>
-            <p className="text-[#665446] mb-6">
-              يجب عليك تسجيل الدخول لمشاهدة محاضرات هذه الدورة
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => navigate('/login')}
-                className="bg-[#665446] text-white py-3 px-6 rounded-lg font-semibold hover:bg-[#554437] transition"
-              >
-                تسجيل الدخول
-              </button>
-              <button
-                onClick={() => navigate('/register')}
-                className="bg-transparent border-2 border-[#665446] text-[#665446] py-3 px-6 rounded-lg font-semibold hover:bg-[#665446] hover:text-white transition"
-              >
-                إنشاء حساب جديد
-              </button>
-              <button
-                onClick={() => navigate('/signup')}
-                className="text-[#665446] underline hover:no-underline"
-              >
-                العودة للصفحة الرئيسية
-              </button>
-            </div>
+      <div className="max-w-md mx-auto text-center mt-20">
+        <div className="bg-[#FFF9EF] rounded-xl shadow-md p-8">
+          <h2 className="text-[#665446] text-3xl font-bold mb-4">
+            تسجيل الدخول مطلوب
+          </h2>
+          <p className="text-[#665446] mb-6">
+            يجب عليك تسجيل الدخول لمشاهدة محاضرات هذه الدورة
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-[#665446] text-white py-3 px-6 rounded-lg font-semibold hover:bg-[#554437] transition"
+            >
+              تسجيل الدخول
+            </button>
+            <button
+              onClick={() => navigate('/signup')}
+              className="bg-transparent border-2 border-[#665446] text-[#665446] py-3 px-6 rounded-lg font-semibold hover:bg-[#665446] hover:text-white transition"
+            >
+              إنشاء حساب جديد
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="text-[#665446] underline hover:no-underline"
+            >
+              العودة للصفحة الرئيسية
+            </button>
           </div>
         </div>
       </div>
+    </div>
     );
   }
 
