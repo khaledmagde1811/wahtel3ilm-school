@@ -1,48 +1,61 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../Utilities/supabaseClient"; // تأكد من استيراد supabase بشكل صحيح
+import { supabase } from "../Utilities/supabaseClient";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [role, setRole] = useState(''); // حفظ دور المستخدم (أدمن أو معلم)
+  const [role, setRole] = useState('');
+  const [userName, setUserName] = useState('');
   const navigate = useNavigate();
 
   const toggleNavbar = () => setIsOpen(!isOpen);
 
   const checkAuth = async () => {
     const { data, error } = await supabase.auth.getUser();
-    setIsLoggedIn(!!data?.user); // true if user exists
-  
+    setIsLoggedIn(!!data?.user);
+
     if (data?.user) {
-      // تعديل هنا من teachers إلى students
+      console.log("User ID:", data.user.id); // تأكد من جلب الـ id
       const { data: userData, error: userError } = await supabase
-        .from('students')  // هنا نقوم بالتحقق في جدول الطلاب
-        .select('role')
-        .eq('auth_id', data.user.id) // تأكد من أن auth_id هو الذي يربط الطلاب بحساباتهم
-        .single(); // استرجاع أول سجل فقط بناءً على auth_id
-  
+        .from('students') // جدول الطلاب
+        .select('role, first_name') // بدل name نجيب first_name
+        .eq('auth_id', data.user.id)
+        .single();
+
       if (userError) {
-        console.error('Error fetching user role:', userError.message || userError);
+        console.error('Error fetching user data:', userError.message || userError);
+        // لو فيه مشكلة في جلب الاسم من جدول الطلاب، نعرض الاسم من الـ auth نفسه
+        setUserName(data.user.email || 'مرحبا بك');
+        setRole(''); // ممكن تترك الدور فاضي
       } else {
-        console.log("Fetched User Data:", userData);  // إضافة هذا السطر للتأكد من البيانات
-        setRole(userData?.role);  // تعيين الدور للمستخدم
+        setRole(userData?.role || '');
+        setUserName(userData?.first_name || ''); // استخدم first_name هنا
       }
+    } else {
+      setRole('');
+      setUserName('');
     }
   };
-  
+
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsLoggedIn(false);
     setRole('');
+    setUserName('');
     navigate("/login");
   };
 
   useEffect(() => {
     checkAuth();
-    supabase.auth.onAuthStateChange(() => {
-      checkAuth(); // تحديث الحالة في حال تغيّر الدخول
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      checkAuth();
     });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   return (
@@ -63,9 +76,8 @@ const Navbar = () => {
 
         {/* التنقل */}
         <nav
-          className={`${
-            isOpen ? "flex" : "hidden"
-          } md:flex flex-col md:flex-row items-center gap-4 mt-4 md:mt-0 font-[Inter] font-bold text-[#665446]`}
+          className={`${isOpen ? "flex" : "hidden"
+            } md:flex flex-col md:flex-row items-center gap-4 mt-4 md:mt-0 font-[Inter] font-bold text-[#665446]`}
         >
           <Link to="/" className="text-xl md:text-2xl">
             الصفحة الرئيسية
@@ -76,17 +88,32 @@ const Navbar = () => {
           <Link to="/goals" className="text-xl md:text-2xl">
             أهداف المدرسة
           </Link>
+          <Link to="/articlesManagement" className="text-xl md:text-2xl">
+            المقالات و التكليف
+          </Link>
 
-          {/* فقط إذا كان المستخدم أدمن أو مسجل الدخول */}
+
+
+
+          {/* روابط الأدمن فقط */}
           {isLoggedIn && role === 'admin' && (
             <>
               <Link to="/admin-dashboard" className="text-xl md:text-2xl">
                 لوحة تحكم الأدمن
               </Link>
-              
+              <Link to="/statistics" className="text-xl md:text-2xl">
+                الإحصائيات
+              </Link>
             </>
           )}
+                    {/* عرض اسم المستخدم بدون لينك */}
+                    {isLoggedIn && userName && (
+            <span className="text-xl md:text-2xl font-[Almarai] ml-4">
+              مرحباً، {userName}
+            </span>
+          )}
 
+          {/* تسجيل الدخول / الخروج */}
           {!isLoggedIn ? (
             <>
               <Link to="/login" className="text-xl md:text-2xl">

@@ -16,6 +16,12 @@ const Signup = () => {
   });
   const [error, setError] = useState('');
 
+  // ✅ دالة للتحقق من صيغة البريد الإلكتروني
+  const isValidEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -24,6 +30,12 @@ const Signup = () => {
     e.preventDefault();
 
     const { email, password, first_name, last_name, date_of_birth, phone_number, role, teacherPassword } = formData;
+
+    // ✅ تحقق من صحة البريد الإلكتروني قبل الإرسال
+    if (!isValidEmail(email)) {
+      setError("⚠️ البريد الإلكتروني غير صالح، تأكد من كتابته بشكل صحيح.");
+      return;
+    }
 
     let finalRole = role;
     let finalPassword = password;
@@ -39,7 +51,7 @@ const Signup = () => {
 
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
-      password: finalPassword,  // إذا كان معلمًا، نستخدم كلمة المرور الثابتة
+      password: finalPassword,
     });
 
     if (signUpError || !signUpData?.user) {
@@ -51,18 +63,20 @@ const Signup = () => {
 
     console.log('✅ الحساب أنشئ على Supabase Auth:', auth_id);
 
-    // إضافة بيانات المستخدم إلى جدول الطلاب أو المعلمين بناءً على نوع الحساب
-    const { error: dbError } = await supabase.from(finalRole === 'admin' ? 'teachers' : 'students').insert({
-      email,
-      first_name,
-      last_name,
-      password_hash: 'hidden',  // يمكنك تخزين كلمة المرور المشفرة لاحقًا إذا لزم الأمر
-      date_of_birth,
-      phone_number,
-      status: 'نشط',
-      level_id: 1,
-      auth_id,
-    });
+    // إضافة بيانات المستخدم إلى جدول الطلاب أو المعلمين
+    const { error: dbError } = await supabase
+      .from(finalRole === 'admin' ? 'teachers' : 'students')
+      .insert({
+        email,
+        first_name,
+        last_name,
+        password_hash: 'hidden',
+        date_of_birth,
+        phone_number,
+        status: 'نشط',
+        level_id: 1,
+        auth_id,
+      });
 
     if (dbError) {
       setError('⚠️ خطأ في حفظ بيانات ' + finalRole + ': ' + dbError.message);
@@ -130,10 +144,11 @@ const Signup = () => {
           required
         />
 
-        {/* إضافة حقل لإدخال كلمة المرور الثابتة للمعلم */}
         {formData.role === 'teacher' && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[#665446]">كلمة مرور المعلم:</label>
+            <label className="block text-sm font-medium text-[#665446]">
+              كلمة مرور المعلم:
+            </label>
             <input
               type="password"
               name="teacherPassword"

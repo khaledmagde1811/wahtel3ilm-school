@@ -18,6 +18,8 @@ import ResetPassword from "./Pages/ResetPassword ";
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
+import DatabaseStatistics from "./Pages/AdminPagde/DatabaseStatistics";
+import ArticlesManagement from "./Pages/createArticle ";
 
 const Spinner = () => (
   <div className="fixed inset-0 bg-[#FFF9EF] flex items-center justify-center z-50">
@@ -98,6 +100,9 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/statistics" element={<DatabaseStatistics />} />
+            <Route path="/articlesManagement" element={<ArticlesManagement />} />
+
           </Routes>
         </div>
 
