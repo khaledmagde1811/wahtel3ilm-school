@@ -30,7 +30,7 @@ const ContantLevel = () => {
 
   return (
     <div className="bg-[#CDC0B6] min-h-screen py-10 px-4">
-      <h1 className="text-center text-[#665446] text-4xl font-bold mb-10">الدورات الخاصة بالمستوى {id}</h1>
+      <h1 className="text-center text-[#665446] text-4xl font-bold mb-10">الدورات الخاصة بالمستوى </h1>
 
       {loading ? (
         <p className="text-center text-[#665446]">جاري تحميل الدورات...</p>

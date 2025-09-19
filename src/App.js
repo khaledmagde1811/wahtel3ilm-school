@@ -20,6 +20,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import DatabaseStatistics from "./Pages/AdminPagde/DatabaseStatistics";
 import ArticlesManagement from "./Pages/createArticle ";
+import Community from "./Pages/Community";
 
 const Spinner = () => (
   <div className="fixed inset-0 bg-[#FFF9EF] flex items-center justify-center z-50">
@@ -102,6 +103,7 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/statistics" element={<DatabaseStatistics />} />
             <Route path="/articlesManagement" element={<ArticlesManagement />} />
+            <Route path="/community" element={<Community />} />
             
 
           </Routes>

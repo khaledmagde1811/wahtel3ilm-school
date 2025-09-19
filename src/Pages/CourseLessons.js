@@ -162,7 +162,7 @@ const CourseLessons = () => {
   return (
     <div className="bg-[#CDC0B6] min-h-screen py-10 px-4">
       <h1 className="text-center text-[#665446] text-4xl font-bold mb-10">
-        المحاضرات الخاصة بالدورة {id}
+        المحاضرات الخاصة بالدورة 
       </h1>
 
       {allLessons.length === 0 ? (
