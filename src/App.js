@@ -29,22 +29,8 @@ const Spinner = () => (
 );
 
 function App() {
-  const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
-
-  const playSound = () => {
-    if (!isMuted && userHasInteracted) {
-      const sound = new Audio(
-        `${process.env.PUBLIC_URL}/sound/notification-sound-effect-372475.mp3`
-      );
-      sound.play().catch(e => {
-        console.warn("المتصفح منع تشغيل الصوت:", e.message);
-      });
-    }
-  };
-
-  const toggleMute = () => setIsMuted(m => !m);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 2000);
@@ -67,21 +53,28 @@ function App() {
 
   useEffect(() => {
     if (!userHasInteracted) return;
-    const p = toast.info('صلي على النبي ﷺ', { onOpen: playSound, onClick: () => setIsMuted(true) });
+    const p = toast.info('صلي على النبي ﷺ');
     const d = setTimeout(() =>
-      toast.info('سبحان الله وبحمده، سبحان الله العظيم', { onOpen: playSound, onClick: () => setIsMuted(true) }),
+      toast.info('سبحان الله وبحمده، سبحان الله العظيم'),
       420000
     );
     const s = setTimeout(() =>
-      toast.info('سبح لله ما في السموات و الأرض', { onOpen: playSound, onClick: () => setIsMuted(true) }),
+      toast.info('سبح لله ما في السموات و الأرض'),
       840000
     );
+    // تسبيح إضافي
+    const extra = setTimeout(() =>
+      toast.info('لا حول ولا قوة إلا بالله'),
+      1260000
+    );
+
     return () => {
       toast.dismiss(p);
       clearTimeout(d);
       clearTimeout(s);
+      clearTimeout(extra);
     };
-  }, [isMuted, userHasInteracted]);
+  }, [userHasInteracted]);
 
   return (
     <Router>
@@ -104,18 +97,8 @@ function App() {
             <Route path="/statistics" element={<DatabaseStatistics />} />
             <Route path="/articlesManagement" element={<ArticlesManagement />} />
             <Route path="/community" element={<Community />} />
-            
-
           </Routes>
         </div>
-
-        <button
-          onClick={toggleMute}
-          className="fixed top-5 right-5 p-3 bg-[#665446] text-white rounded-md z-50 mt-16"
-        >
-          {isMuted ? 'تشغيل الصوت' : 'إيقاف الصوت'}
-        </button>
-
         <Footer />
       </div>
     </Router>

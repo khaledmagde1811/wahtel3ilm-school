@@ -208,7 +208,8 @@ const Navbar = () => {
               </Link>
               <Link 
                 to="/signup" 
-                className="bg-[#665446] text-white px-6 py-2 rounded-lg hover:bg-[#8B7355] transition-colors duration-200 font-[Inter] font-bold"
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 font-[Inter] font-bold"
+
               >
                 إنشاء حساب
               </Link>
@@ -301,7 +302,7 @@ const Navbar = () => {
                   </Link>
                   <Link
                     to="/signup"
-                    className="block bg-[#665446] text-white px-4 py-3 rounded-lg hover:bg-[#8B7355] transition-colors duration-200 font-[Inter] font-bold text-center"
+                    className="block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors transition-colors duration-200 font-[Inter] font-bold text-center"
                     onClick={() => setIsOpen(false)}
                   >
                     إنشاء حساب
