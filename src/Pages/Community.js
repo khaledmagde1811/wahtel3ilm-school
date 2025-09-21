@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../Utilities/supabaseClient';
 import { Image, Send, Trash2, Heart, MessageCircle, Share2, Camera, X, AlertCircle } from 'lucide-react';
-
+import AnimatedBackground from '../Utilities/AnimatedBackground'; // Import الخلفية المتحركة الجاهزة
 const Community = () => {
   const [posts, setPosts] = useState([]);
   const [newPostContent, setNewPostContent] = useState('');
@@ -507,9 +507,8 @@ const deleteComment = async (commentId, postId) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        
+    <AnimatedBackground className="min-h-screen" dir="rtl">
+<div className="max-w-4xl mx-auto px-4 py-8 relative z-10">        
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-[#665446] font-[Almarai] mb-2">
@@ -798,7 +797,7 @@ const deleteComment = async (commentId, postId) => {
           </div>
         )}
       </div>
-    </div>
+    </AnimatedBackground>
   );
 };
 

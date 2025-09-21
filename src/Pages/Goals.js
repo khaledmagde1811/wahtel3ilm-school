@@ -16,6 +16,7 @@ import {
   Scroll,
   Zap
 } from 'lucide-react';
+import AnimatedBackground from '../Utilities/AnimatedBackground'; // Import الخلفية المتحركة الجاهزة
 
 const Goals = () => {
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -80,8 +81,7 @@ const Goals = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#CDC0B6] via-[#D4C7BC] to-[#CDC0B6] relative overflow-hidden">
-      
+<AnimatedBackground className="min-h-screen" dir="rtl">      
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl animate-pulse" />
@@ -273,7 +273,7 @@ const Goals = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AnimatedBackground>
   );
 };
 

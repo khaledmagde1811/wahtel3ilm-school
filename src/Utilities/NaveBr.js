@@ -270,6 +270,21 @@ const Navbar = () => {
             <SearchInput />
           </div>
 
+          {/* عرض اسم المستخدم في الموبايل */}
+          {isLoggedIn && (
+            <div className="mb-3 px-4 py-3 bg-gradient-to-r from-[#FFF9EF] to-[#F5EBE0] rounded-lg border border-[#5A4633]/10">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 font-[Almarai]">مرحباً</p>
+                  <p className="text-[#5A4633] font-bold font-[Almarai] text-sm">{userName}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <ul className="space-y-2">
             {mainMenuItems.map((item, index) => {
               const Icon = item.icon;

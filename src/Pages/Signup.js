@@ -223,7 +223,7 @@ const Signup = () => {
           إنشاء حساب
         </button>
 
-        <div className="text-center mt-4">
+        {/* <div className="text-center mt-4">
           <p className="text-sm text-[#665446]">
             لديك حساب بالفعل؟{' '}
             <button
@@ -234,7 +234,7 @@ const Signup = () => {
               تسجيل الدخول
             </button>
           </p>
-        </div>
+        </div> */}
       </form>
     </div>
   );
