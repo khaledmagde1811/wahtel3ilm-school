@@ -661,237 +661,181 @@
     };
 
     return (
-        <div className="min-h-screen p-6" style={{ backgroundColor: "#FFF9EF" }}>
-        <div className="max-w-6xl mx-auto">
-            <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2" style={{ color: "#665446" }}>
+        <div className="min-h-screen p-4 sm:p-6 bg-[#FFF9EF]">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2" style={{ color: "#665446" }}>
                 إدارة المقالات
-            </h1>
-            <p className="text-lg text-gray-600">
-                {isAdmin
-                ? "إنشاء ومشاركة المقالات التعليمية"
-                : "مشاركة المقالات التعليمية"}
-            </p>
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600">
+                {isAdmin ? "إنشاء ومشاركة المقالات التعليمية" : "مشاركة المقالات التعليمية"}
+              </p>
             </div>
-
+      
             {/* الإحصائيات تظهر للأدمن فقط */}
             {isAdmin && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                    <p className="text-sm font-medium text-gray-600">
-                        إجمالي المقالات
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">إجمالي المقالات</p>
+                    <p className="text-xl sm:text-2xl font-bold" style={{ color: "#665446" }}>{articles.length}</p>
+                  </div>
+                  <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-[#665446]" />
+                </div>
+      
+                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">المقالات المفتوحة</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-600">{articles.filter(a => a.status === "مفتوح").length}</p>
+                  </div>
+                  <Eye className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                </div>
+      
+                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">إجمالي الإعجابات</p>
+                    <p className="text-xl sm:text-2xl font-bold text-red-600">{articles.reduce((sum, a) => sum + (a.likes_count || 0), 0)}</p>
+                  </div>
+                  <Heart className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
+                </div>
+      
+                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">مقالاتي</p>
+                    <p className="text-xl sm:text-2xl font-bold text-blue-600">
+                      {articles.filter(a => a.author_id === currentUser?.id).length}
                     </p>
-                    <p
-                        className="text-2xl font-bold"
-                        style={{ color: "#665446" }}
-                    >
-                        {articles.length}
-                    </p>
-                    </div>
-                    <MessageSquare
-                    className="h-8 w-8"
-                    style={{ color: "#665446" }}
-                    />
+                  </div>
+                  <User className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                 </div>
-                </div>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                    <p className="text-sm font-medium text-gray-600">
-                        المقالات المفتوحة
-                    </p>
-                    <p className="text-2xl font-bold text-green-600">
-                        {articles.filter((a) => a.status === "مفتوح").length}
-                    </p>
-                    </div>
-                    <Eye className="h-8 w-8 text-green-600" />
-                </div>
-                </div>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                    <p className="text-sm font-medium text-gray-600">
-                        إجمالي الإعجابات
-                    </p>
-                    <p className="text-2xl font-bold text-red-600">
-                        {articles.reduce((sum, a) => sum + (a.likes_count || 0), 0)}
-                    </p>
-                    </div>
-                    <Heart className="h-8 w-8 text-red-600" />
-                </div>
-                </div>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                    <p className="text-sm font-medium text-gray-600">مقالاتي</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                        {
-                        articles.filter((a) => a.author_id === currentUser?.id)
-                            .length
-                        }
-                    </p>
-                    </div>
-                    <User className="h-8 w-8 text-blue-600" />
-                </div>
-                </div>
-            </div>
+              </div>
             )}
-
+      
             {/* التبويبات وزر إنشاء مقال */}
-            <div className="flex justify-between items-center mb-6">
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div className="flex flex-wrap gap-2 items-center">
                 <button
-                onClick={() => setActiveTab("all")}
-                className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
-                    activeTab === "all"
-                    ? "bg-white text-gray-800 shadow-md"
-                    : "text-gray-600 hover:bg-white hover:bg-opacity-50"
-                }`}
+                  onClick={() => setActiveTab("all")}
+                  className={`px-3 py-2 rounded-lg transition-colors duration-200 text-sm sm:text-base ${
+                    activeTab === "all" ? "bg-white text-gray-800 shadow-md" : "text-gray-600 hover:bg-white hover:bg-opacity-50"
+                  }`}
                 >
-                جميع المقالات
+                  جميع المقالات
                 </button>
                 <button
-                onClick={() => setActiveTab("my-articles")}
-                className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
-                    activeTab === "my-articles"
-                    ? "bg-white text-gray-800 shadow-md"
-                    : "text-gray-600 hover:bg-white hover:bg-opacity-50"
-                }`}
+                  onClick={() => setActiveTab("my-articles")}
+                  className={`px-3 py-2 rounded-lg transition-colors duration-200 text-sm sm:text-base ${
+                    activeTab === "my-articles" ? "bg-white text-gray-800 shadow-md" : "text-gray-600 hover:bg-white hover:bg-opacity-50"
+                  }`}
                 >
-                مقالاتي
+                  مقالاتي
                 </button>
+              </div>
+      
+              {/* زر إنشاء مقال للأدمن فقط */}
+              {isAdmin && (
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      setShowCreateForm(true);
+                      setEditingArticle(null);
+                      setArticleForm({ title: "", content: "", status: "مفتوح" });
+                    }}
+                    className="w-full sm:w-auto flex items-center gap-2 px-3 py-2 bg-white text-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 text-sm sm:text-base"
+                  >
+                    <Plus className="h-4 w-4" />
+                    إنشاء مقال جديد
+                  </button>
+                </div>
+              )}
             </div>
-
-            {/* زر إنشاء مقال للأدمن فقط */}
-            {isAdmin && (
-                <button
-                onClick={() => {
-                    setShowCreateForm(true);
-                    setEditingArticle(null);
-                    setArticleForm({ title: "", content: "", status: "مفتوح" });
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
-                >
-                <Plus className="h-4 w-4" />
-                إنشاء مقال جديد
-                </button>
-            )}
-            </div>
-
+      
             {/* استمارة إنشاء/تحرير المقال للأدمن فقط */}
             {showCreateForm && isAdmin && (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                <h2
-                className="text-2xl font-bold mb-4"
-                style={{ color: "#665446" }}
-                >
-                {editingArticle ? "تحرير المقال" : "إنشاء مقال جديد"}
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+                <h2 className="text-lg sm:text-2xl font-bold mb-4" style={{ color: "#665446" }}>
+                  {editingArticle ? "تحرير المقال" : "إنشاء مقال جديد"}
                 </h2>
-                <div>
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                    عنوان المقال
-                    </label>
+      
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">عنوان المقال</label>
                     <input
-                    type="text"
-                    value={articleForm.title}
-                    onChange={(e) =>
-                        setArticleForm((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                        }))
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="أدخل عنوان المقال"
+                      type="text"
+                      value={articleForm.title}
+                      onChange={(e) => setArticleForm(prev => ({ ...prev, title: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="أدخل عنوان المقال"
                     />
-                </div>
-
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                    محتوى المقال
-                    </label>
+                  </div>
+      
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">محتوى المقال</label>
                     <textarea
-                    value={articleForm.content}
-                    onChange={(e) =>
-                        setArticleForm((prev) => ({
-                        ...prev,
-                        content: e.target.value,
-                        }))
-                    }
-                    rows="8"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-                    placeholder="اكتب محتوى المقال هنا..."
+                      value={articleForm.content}
+                      onChange={(e) => setArticleForm(prev => ({ ...prev, content: e.target.value }))}
+                      rows="8"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+                      placeholder="اكتب محتوى المقال هنا..."
                     />
-                </div>
-
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                    حالة المقال
-                    </label>
+                  </div>
+      
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">حالة المقال</label>
                     <select
-                    value={articleForm.status}
-                    onChange={(e) =>
-                        setArticleForm((prev) => ({
-                        ...prev,
-                        status: e.target.value,
-                        }))
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={articleForm.status}
+                      onChange={(e) => setArticleForm(prev => ({ ...prev, status: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                    <option value="مفتوح">مفتوح</option>
-                    <option value="مغلق">مغلق</option>
+                      <option value="مفتوح">مفتوح</option>
+                      <option value="مغلق">مغلق</option>
                     </select>
-                </div>
-
-                <div className="flex gap-4">
+                  </div>
+      
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <button
-                    onClick={editingArticle ? updateArticle : createArticle}
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
+                      onClick={editingArticle ? updateArticle : createArticle}
+                      className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
                     >
-                    {editingArticle ? "تحديث المقال" : "نشر المقال"}
+                      {editingArticle ? "تحديث المقال" : "نشر المقال"}
                     </button>
                     <button
-                    onClick={() => {
+                      onClick={() => {
                         setShowCreateForm(false);
                         setEditingArticle(null);
                         setArticleForm({ title: "", content: "", status: "مفتوح" });
-                    }}
-                    className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg transition-colors duration-200"
+                      }}
+                      className="w-full sm:w-auto px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg transition-colors duration-200"
                     >
-                    إلغاء
+                      إلغاء
                     </button>
+                  </div>
                 </div>
-                </div>
-            </div>
+              </div>
             )}
-
+      
             {/* عرض المقالات */}
-            <div className="grid gap-6">
-            {filteredArticles.length === 0 ? (
-                <div className="text-center py-12">
-                <MessageSquare className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                    {activeTab === "my-articles"
-                    ? "لا توجد مقالات"
-                    : "لا يوجد مقالات حتى الآن"}
-                </h3>
-                <p className="text-gray-500">
-                    {activeTab === "my-articles"
-                    ? "لم تنشر أي مقال بعد."
-                    : "لم يتم نشر أي مقالات حتى الآن."}
-                </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredArticles.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <MessageSquare className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                    {activeTab === "my-articles" ? "لا توجد مقالات" : "لا يوجد مقالات حتى الآن"}
+                  </h3>
+                  <p className="text-gray-500">
+                    {activeTab === "my-articles" ? "لم تنشر أي مقال بعد." : "لم يتم نشر أي مقالات حتى الآن."}
+                  </p>
                 </div>
-            ) : (
-                filteredArticles.map((article) => (
-                <ArticleCard key={article.id} article={article} />
+              ) : (
+                filteredArticles.map(article => (
+                  <ArticleCard key={article.id} article={article} />
                 ))
-            )}
+              )}
             </div>
+          </div>
         </div>
-        </div>
-    );
+      );
+      
     };
 
     export default ArticlesManagement;
