@@ -145,7 +145,7 @@ const HeroSection = () => {
                   </span>
                   <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-amber-400 transform origin-right animate-pulse"></span>
                 </span>
-                {/* <span className="text-white"> أصيل</span> */}
+                <span className="text-white"> بإذن الله</span>
               </div>
             </div>
 
