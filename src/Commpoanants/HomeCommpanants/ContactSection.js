@@ -80,7 +80,7 @@ const ContactSection = () => {
                     <MessageSquare className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-[#665446] font-['Almarai']">واتساب</h4>
+                    <h4 className="font-bold text-[#665446] font-['Almarai']">اتصال أو واتساب</h4>
                     <p className="text-[#8B7355] font-['Almarai']">01117379661</p>
                   </div>
                 </div>
@@ -91,7 +91,7 @@ const ContactSection = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-[#665446] font-['Almarai']">البريد الإلكتروني</h4>
-                    <p className="text-[#8B7355] font-['Almarai']">kelshaar3@gmail.com</p>
+                    <p className="text-[#8B7355] font-['Almarai']">wa7at.al3lm@gmail.com</p>
                   </div>
                 </div>
                 
