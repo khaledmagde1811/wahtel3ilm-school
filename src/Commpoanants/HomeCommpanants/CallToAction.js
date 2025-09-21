@@ -17,7 +17,7 @@ const CallToAction = () => {
   };
 
   const features = [
-    { icon: BookOpen, text: "محتوى شرعي أصيل", color: "text-amber-600" },
+    { icon: BookOpen, text: "محتوى شرعي موثوق", color: "text-amber-600" },
     { icon: Users, text: "مجتمع علمي متميز", color: "text-blue-600" },
     { icon: Clock, text: "تعلم في أي وقت", color: "text-green-600" }
   ];
@@ -154,7 +154,7 @@ const CallToAction = () => {
           </div>
           <div className="text-center bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50">
             <div className="text-3xl font-bold text-[#665446] font-['Almarai'] mb-2">100%</div>
-            <div className="text-sm text-[#8B7355] font-['Almarai']">محتوى أصيل</div>
+            <div className="text-sm text-[#8B7355] font-['Almarai']">محتوى مجاني</div>
           </div>
           <div className="text-center bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50">
             <div className="text-3xl font-bold text-[#665446] font-['Almarai'] mb-2">∞</div>

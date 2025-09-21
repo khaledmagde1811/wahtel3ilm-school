@@ -395,7 +395,7 @@ const AboutCourse = () => {
               ابدأ رحلتك التعليمية اليوم
             </h3>
             <p className="text-[#8B7355] font-['Almarai'] mb-6">
-              انضم إلى {stats.totalStudents} طالب واكتسب المعرفة الشرعية الأصيلة
+              انضم إلى {stats.totalStudents}طالب  واكتسب المعرفة الشرعية  
             </p>
             <Link 
               to="/courses"

@@ -145,7 +145,7 @@ const HeroSection = () => {
                   </span>
                   <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-amber-400 transform origin-right animate-pulse"></span>
                 </span>
-                <span className="text-white"> أصيل</span>
+                {/* <span className="text-white"> أصيل</span> */}
               </div>
             </div>
 
@@ -184,7 +184,7 @@ const HeroSection = () => {
               </div>
               <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-3 md:p-4 border border-white/20 min-w-[100px]">
                 <div className="text-2xl md:text-3xl font-bold text-yellow-300">100%</div>
-                <div className="text-xs md:text-sm text-amber-100">محتوى أصيل</div>
+                <div className="text-xs md:text-sm text-amber-100">محتوى موثوق</div>
               </div>
             </div>
 
