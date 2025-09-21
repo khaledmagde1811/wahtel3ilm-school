@@ -1,7 +1,26 @@
+// src/Components/Navbar.js
 import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../Utilities/supabaseClient";
-import { ChevronDown, User, LogOut, BookOpen, Target, FileText, Settings, BarChart3, Home, Menu, X ,MessageSquare } from 'lucide-react';
+import {
+  ChevronDown,
+  User,
+  LogOut,
+  BookOpen,
+  Target,
+  FileText,
+  Settings,
+  BarChart3,
+  Home,
+  Menu,
+  X,
+  MessageSquare,
+  Book,
+  Search,
+  Bell
+} from "lucide-react";
+import SearchInput from "../Commpoanants/SearchInput";
+import { useNotifications } from "../contexts/NotificationContext";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,9 +28,13 @@ const Navbar = () => {
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [role, setRole] = useState('');
-  const [userName, setUserName] = useState('');
-  
+  const [role, setRole] = useState("");
+  const [userName, setUserName] = useState("");
+  const [scrolled, setScrolled] = useState(false);
+
+  // notifications from context (تأكد إن الـ App ملفوف بـ NotificationProvider)
+  const { notifications = { newArticles: 0, newPosts: 0 }, markArticlesAsVisited, markCommunityAsVisited } = useNotifications();
+
   const navigate = useNavigate();
   const mainMenuRef = useRef(null);
   const adminMenuRef = useRef(null);
@@ -19,7 +42,6 @@ const Navbar = () => {
 
   const toggleNavbar = () => setIsOpen(!isOpen);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (mainMenuRef.current && !mainMenuRef.current.contains(event.target)) {
@@ -32,44 +54,33 @@ const Navbar = () => {
         setIsUserMenuOpen(false);
       }
     }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // auth check (كما عندك)
   const checkAuth = async () => {
     const { data, error } = await supabase.auth.getUser();
     setIsLoggedIn(!!data?.user);
 
     if (data?.user) {
-      console.log("User ID:", data.user.id);
       const { data: userData, error: userError } = await supabase
-        .from('students')
-        .select('role, first_name')
-        .eq('auth_id', data.user.id)
+        .from("students")
+        .select("role, first_name")
+        .eq("auth_id", data.user.id)
         .single();
 
       if (userError) {
-        console.error('Error fetching user data:', userError.message || userError);
-        setUserName(data.user.email || 'مرحبا بك');
-        setRole('');
+        setUserName(data.user.email || "مرحبا بك");
+        setRole("");
       } else {
-        setRole(userData?.role || '');
-        setUserName(userData?.first_name || '');
+        setRole(userData?.role || "");
+        setUserName(userData?.first_name || "");
       }
     } else {
-      setRole('');
-      setUserName('');
+      setRole("");
+      setUserName("");
     }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsLoggedIn(false);
-    setRole('');
-    setUserName('');
-    setIsUserMenuOpen(false);
-    navigate("/login");
   };
 
   useEffect(() => {
@@ -77,60 +88,93 @@ const Navbar = () => {
     const { data: authListener } = supabase.auth.onAuthStateChange(() => {
       checkAuth();
     });
-
     return () => {
-      authListener.subscription.unsubscribe();
+      try {
+        authListener.subscription.unsubscribe();
+      } catch (e) {}
     };
   }, []);
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsLoggedIn(false);
+    setRole("");
+    setUserName("");
+    setIsUserMenuOpen(false);
+    navigate("/login");
+  };
+
+  // هنا نضيف notifType علشان نعرض الأعداد
   const mainMenuItems = [
-    { to: '/', label: 'الصفحة الرئيسية', icon: Home },
-    { to: '/courses', label: 'المحاضرات', icon: BookOpen },
-    { to: '/goals', label: 'أهداف المدرسة', icon: Target },
-    { to: '/articlesManagement', label: 'المقالات و التكليف', icon: FileText },
-    { to: '/community', label: 'المجتمع ', icon: MessageSquare },
+    { to: "/", label: "الصفحة الرئيسية", icon: Home },
+    { to: "/courses", label: "المحاضرات", icon: BookOpen },
+    { to: "/goals", label: "أهداف المدرسة", icon: Target },
+    { to: "/articlesManagement", label: "المقالات و التكليف", icon: FileText, notifType: "newArticles" },
+    { to: "/community", label: "المجتمع", icon: MessageSquare, notifType: "newPosts" }
   ];
 
   const adminMenuItems = [
-    { to: '/admin-dashboard', label: 'لوحة تحكم الأدمن', icon: Settings },
-    { to: '/statistics', label: 'الإحصائيات', icon: BarChart3 },
+    { to: "/admin-dashboard", label: "لوحة تحكم الأدمن", icon: Settings },
+    { to: "/statistics", label: "الإحصائيات", icon: BarChart3 }
   ];
 
   return (
-    <div className="bg-[#FFF9EF] shadow-md rounded-md w-full" dir="rtl">
-      <div className="max-w-screen-xl mx-auto px-4 py-6 flex items-center justify-between">
-        
+    <nav
+      className={`relative top-0 left-0 right-0 z-50 transition-all duration-300 backdrop-blur-md ${
+        scrolled ? "bg-white/80 shadow-md" : "bg-gradient-to-r from-[#FFF9EF]/90 to-[#F5EBE0]/90"
+      }`}
+      dir="rtl"
+    >
+      <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
-        <h1 className="text-[#665446] text-3xl md:text-4xl font-bold font-[Almarai]">
-          واحة العلم
-        </h1>
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center shadow-inner relative">
+            <Book className="text-white" />
+            <span className="absolute w-2 h-2 rounded-full bg-green-500 top-0 right-0 animate-pulse"></span>
+          </div>
+          <h1 className="text-[#5A4633] text-2xl md:text-3xl font-extrabold font-[Almarai] tracking-wide hover:scale-105 transition-transform">
+            واحة العلم
+          </h1>
+        </div>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
-          
-          {/* Main Menu Dropdown */}
           <div className="relative" ref={mainMenuRef}>
             <button
               onClick={() => setIsMainMenuOpen(!isMainMenuOpen)}
-              className="flex items-center gap-2 text-[#665446] hover:text-[#8B7355] font-[Inter] font-bold text-xl transition-colors duration-200"
+              className="flex items-center gap-2 text-[#5A4633] hover:text-[#7B5E3E] font-[Inter] font-semibold text-lg transition-colors"
             >
-              القوائم الرئيسية
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isMainMenuOpen ? 'rotate-180' : ''}`} />
+              القوائم
+              <ChevronDown className={`w-4 h-4 transition-transform ${isMainMenuOpen ? "rotate-180" : ""}`} />
             </button>
-            
+
             {isMainMenuOpen && (
-              <div className="absolute right-0 mt-3 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+              <div className="absolute right-0 mt-2 w-64 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-fadeIn">
                 {mainMenuItems.map((item, index) => {
-                  const IconComponent = item.icon;
+                  const Icon = item.icon;
+                  const notifCount = item.notifType ? (notifications?.[item.notifType] ?? 0) : 0;
+
                   return (
                     <Link
                       key={index}
                       to={item.to}
-                      className="flex items-center gap-3 px-4 py-3 text-[#665446] hover:bg-[#FFF9EF] hover:text-[#8B7355] transition-colors duration-200 font-[Inter] font-bold"
-                      onClick={() => setIsMainMenuOpen(false)}
+                      className="flex items-center justify-between gap-2 px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition duration-200"
+                      onClick={() => {
+                        setIsMainMenuOpen(false);
+                        // عند الضغط نصفر العداد في الcontext للصفحات المعينة
+                        if (item.notifType === "newArticles") markArticlesAsVisited();
+                        if (item.notifType === "newPosts") markCommunityAsVisited();
+                      }}
                     >
-                      <IconComponent className="w-5 h-5" />
-                      {item.label}
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" /> {item.label}
+                      </div>
+
+                      {notifCount > 0 && (
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">
+                          {notifCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -138,30 +182,28 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Admin Menu Dropdown */}
-          {isLoggedIn && role === 'admin' && (
+          {isLoggedIn && role === "admin" && (
             <div className="relative" ref={adminMenuRef}>
               <button
                 onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)}
-                className="flex items-center gap-2 text-[#665446] hover:text-[#8B7355] font-[Inter] font-bold text-xl transition-colors duration-200"
+                className="flex items-center gap-2 text-[#5A4633] hover:text-[#7B5E3E] font-[Inter] font-semibold text-lg transition-colors"
               >
                 إدارة النظام
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isAdminMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 transition-transform ${isAdminMenuOpen ? "rotate-180" : ""}`} />
               </button>
-              
+
               {isAdminMenuOpen && (
-                <div className="absolute right-0 mt-3 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                <div className="absolute right-0 mt-2 w-52 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-fadeIn">
                   {adminMenuItems.map((item, index) => {
-                    const IconComponent = item.icon;
+                    const Icon = item.icon;
                     return (
                       <Link
                         key={index}
                         to={item.to}
-                        className="flex items-center gap-3 px-4 py-3 text-[#665446] hover:bg-[#FFF9EF] hover:text-[#8B7355] transition-colors duration-200 font-[Inter] font-bold"
+                        className="flex items-center gap-2 px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition duration-200"
                         onClick={() => setIsAdminMenuOpen(false)}
                       >
-                        <IconComponent className="w-5 h-5" />
-                        {item.label}
+                        <Icon className="w-4 h-4" /> {item.label}
                       </Link>
                     );
                   })}
@@ -170,27 +212,32 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* User Menu */}
+          {/* Search */}
+          <div className="relative">
+            <SearchInput />
+          </div>
+
+          {/* user */}
           {isLoggedIn ? (
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-2 text-[#665446] hover:text-[#8B7355] font-[Almarai] font-bold text-xl transition-colors duration-200"
+                className="flex items-center gap-2 text-[#5A4633] hover:text-[#7B5E3E] font-[Almarai] font-bold text-lg transition-colors"
               >
                 <User className="w-5 h-5" />
-                مرحباً، {userName}
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                {userName}
+                <ChevronDown className={`w-4 h-4 transition-transform ${isUserMenuOpen ? "rotate-180" : ""}`} />
               </button>
-              
+
               {isUserMenuOpen && (
-                <div className="absolute left-0 mt-3 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                  <div className="px-4 py-2 border-b border-gray-200">
-                    <p className="text-sm text-gray-600 font-[Almarai]">مسجل دخول كـ</p>
-                    <p className="text-[#665446] font-bold font-[Almarai]">{userName}</p>
+                <div className="absolute left-0 mt-2 w-56 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-fadeIn">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-xs text-gray-500 font-[Almarai]">مسجل كـ</p>
+                    <p className="text-[#5A4633] font-bold font-[Almarai]">{userName}</p>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition-colors duration-200 font-[Almarai] font-bold text-right"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-md transition duration-200 font-[Almarai] font-bold text-right"
                   >
                     <LogOut className="w-4 h-4" />
                     تسجيل الخروج
@@ -199,121 +246,92 @@ const Navbar = () => {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-4">
-              <Link 
-                to="/login" 
-                className="text-xl font-bold text-[#665446] hover:text-[#8B7355] transition-colors duration-200 font-[Inter]"
-              >
+            <div className="flex items-center gap-2">
+              <Link to="/login" className="px-4 py-1 rounded-full text-sm font-semibold text-[#5A4633] border border-[#5A4633]/30 hover:bg-[#fdf6ec] transition">
                 تسجيل الدخول
               </Link>
-              <Link 
-                to="/signup" 
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 font-[Inter] font-bold"
-
-              >
+              <Link to="/signup" className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-1 rounded-full hover:opacity-90 transition font-bold">
                 إنشاء حساب
               </Link>
             </div>
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={toggleNavbar}
-          className="md:hidden text-[#665446] focus:outline-none p-2"
-        >
+        {/* Mobile Button */}
+        <button onClick={toggleNavbar} className="md:hidden text-[#5A4633] focus:outline-none p-2 bg-[#FFF3E0]/70 rounded-lg hover:shadow-md transition">
           {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       </div>
 
-      {/* Mobile Navigation */}
+      {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
-          <div className="px-4 py-4 space-y-4">
-            
-            {/* Mobile Main Menu */}
-            <div className="space-y-2">
-              <h3 className="font-bold text-[#665446] font-[Almarai] text-lg border-b border-gray-200 pb-2">
-                القوائم الرئيسية
-              </h3>
-              {mainMenuItems.map((item, index) => {
-                const IconComponent = item.icon;
-                return (
-                  <Link
-                    key={index}
-                    to={item.to}
-                    className="flex items-center gap-3 px-4 py-3 text-[#665446] hover:bg-[#FFF9EF] rounded-lg transition-colors duration-200 font-[Inter] font-bold"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <IconComponent className="w-5 h-5" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Mobile Admin Menu */}
-            {isLoggedIn && role === 'admin' && (
-              <div className="space-y-2">
-                <h3 className="font-bold text-[#665446] font-[Almarai] text-lg border-b border-gray-200 pb-2">
-                  إدارة النظام
-                </h3>
-                {adminMenuItems.map((item, index) => {
-                  const IconComponent = item.icon;
-                  return (
-                    <Link
-                      key={index}
-                      to={item.to}
-                      className="flex items-center gap-3 px-4 py-3 text-[#665446] hover:bg-[#FFF9EF] rounded-lg transition-colors duration-200 font-[Inter] font-bold"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      <IconComponent className="w-5 h-5" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Mobile User Section */}
-            <div className="space-y-2 border-t border-gray-200 pt-4">
-              {isLoggedIn ? (
-                <>
-                  <div className="px-4 py-2">
-                    <p className="text-sm text-gray-600 font-[Almarai]">مسجل دخول كـ</p>
-                    <p className="text-[#665446] font-bold font-[Almarai] text-lg">{userName}</p>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 font-[Almarai] font-bold"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    تسجيل الخروج
-                  </button>
-                </>
-              ) : (
-                <div className="space-y-2">
-                  <Link
-                    to="/login"
-                    className="block px-4 py-3 text-[#665446] hover:bg-[#FFF9EF] rounded-lg transition-colors duration-200 font-[Inter] font-bold text-center"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    تسجيل الدخول
-                  </Link>
-                  <Link
-                    to="/signup"
-                    className="block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors transition-colors duration-200 font-[Inter] font-bold text-center"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    إنشاء حساب
-                  </Link>
-                </div>
-              )}
-            </div>
+        <div className="mb-3 px-4">
+          <div className="mb-2">
+            <SearchInput />
           </div>
+
+          <ul className="space-y-2">
+            {mainMenuItems.map((item, index) => {
+              const Icon = item.icon;
+              const notifCount = item.notifType ? (notifications?.[item.notifType] ?? 0) : 0;
+
+              return (
+                <li key={index}>
+                  <Link
+                    to={item.to}
+                    className="flex items-center justify-between gap-3 px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition"
+                    onClick={() => {
+                      toggleNavbar();
+                      if (item.notifType === "newArticles") markArticlesAsVisited();
+                      if (item.notifType === "newPosts") markCommunityAsVisited();
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-5 h-5" /> {item.label}
+                    </div>
+
+                    {notifCount > 0 && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">
+                        {notifCount}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+
+            {isLoggedIn && role === "admin" && adminMenuItems.map((item, index) => (
+              <li key={index}>
+                <Link
+                  to={item.to}
+                  className="flex items-center gap-3 px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition"
+                  onClick={toggleNavbar}
+                >
+                  <item.icon className="w-5 h-5" /> {item.label}
+                </Link>
+              </li>
+            ))}
+
+            {isLoggedIn ? (
+              <li>
+                <button onClick={handleLogout} className="flex items-center gap-3 w-full text-right px-4 py-2 text-red-600 hover:bg-red-50 rounded-md transition">
+                  <LogOut className="w-5 h-5" /> تسجيل الخروج
+                </button>
+              </li>
+            ) : (
+              <>
+                <li>
+                  <Link to="/login" onClick={toggleNavbar} className="block px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition">تسجيل الدخول</Link>
+                </li>
+                <li>
+                  <Link to="/signup" onClick={toggleNavbar} className="block px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition">إنشاء حساب</Link>
+                </li>
+              </>
+            )}
+          </ul>
         </div>
       )}
-    </div>
+    </nav>
   );
 };
 

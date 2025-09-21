@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import './App.css';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 import Login from './Pages/Login';
 import Signup from './Pages/Signup';
@@ -78,6 +79,7 @@ function App() {
 
   return (
     <Router>
+          <NotificationProvider>
       {isLoading && <Spinner />}
       <ToastContainer />
       <div className="App bg-[#CDC0B6] min-h-screen flex flex-col">
@@ -101,6 +103,7 @@ function App() {
         </div>
         <Footer />
       </div>
+      </NotificationProvider>
     </Router>
   );
 }

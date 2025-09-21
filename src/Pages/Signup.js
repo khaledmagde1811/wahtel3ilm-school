@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { supabase } from '../Utilities/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-
+import { Eye, EyeOff } from "lucide-react"; // أيقونات جاهزة
 const Signup = () => {
+  const [showPassword, setShowPassword] = useState(false);
+
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     first_name: '',
@@ -111,7 +113,7 @@ const Signup = () => {
           className="w-full p-3 mb-4 rounded border"
           required
         />
-        <input
+          <input
           type="email"
           name="email"
           placeholder="البريد الإلكتروني"
@@ -119,14 +121,26 @@ const Signup = () => {
           className="w-full p-3 mb-4 rounded border"
           required
         />
-        <input
-          type="password"
-          name="password"
-          placeholder="كلمة المرور"
-          onChange={handleChange}
-          className="w-full p-3 mb-4 rounded border"
-          required
-        />
+
+        {/* الباسورد مع العين */}
+        <div className="relative mb-4">
+          <input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            placeholder="كلمة المرور"
+            onChange={handleChange}
+            className="w-full p-3 rounded border pr-10"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
+
         <input
           type="date"
           name="date_of_birth"
