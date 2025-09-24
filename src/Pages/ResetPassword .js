@@ -155,7 +155,7 @@ const ResetPassword = () => {
   return (
 
     <AnimatedBackground className="min-h-screen flex items-center justify-center px-4" dir="rtl">
-      <div className="bg-[#FFF9EF] p-8 rounded-xl shadow-lg max-w-md w-full">
+      <div  className="bg-[#FFF9EF] p-8 rounded-xl shadow-lg max-w-md w-full">
         
         {/* Header */}
         <div className="text-center mb-8">
