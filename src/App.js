@@ -95,7 +95,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/reset-password" element={<ResetPassword/>} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/statistics" element={<DatabaseStatistics />} />
             <Route path="/articlesManagement" element={<ArticlesManagement />} />
             <Route path="/community" element={<Community />} />

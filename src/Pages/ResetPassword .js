@@ -1,224 +1,196 @@
-// src/Pages/ResetPassword.js
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../Utilities/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import bcrypt from "bcryptjs";
+import { supabase } from "../Utilities/supabaseClient";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import AnimatedBackground from "../Utilities/AnimatedBackground";
+import { Mail, Lock, ArrowRight, CheckCircle } from "lucide-react";
 
-const ResetPassword = () => {
-  const navigate = useNavigate();
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+export default function ResetPassword() {
+  const [step, setStep] = useState("email");
+  const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [validSession, setValidSession] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [userInfo, setUserInfo] = useState(null);
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const fullHash = window.location.hash || ''; // مثال: "#/reset-password#access_token=..."
-        console.log('fullHash:', fullHash);
+  const navigate = useNavigate();
 
-        let tokenPart = '';
-        
-        // نتعامل مع الحالات المختلفة للـ hash
-        if (fullHash.includes('#access_token=') || fullHash.includes('#type=recovery')) {
-          // نستخرج الجزء اللي فيه التوكنات
-          const tokenStartIndex = fullHash.indexOf('#access_token=') !== -1 
-            ? fullHash.indexOf('#access_token=') 
-            : fullHash.indexOf('#type=recovery');
-          
-          if (tokenStartIndex !== -1) {
-            tokenPart = fullHash.substring(tokenStartIndex + 1); // نشيل الـ # من الأول
-          }
-        } else if (fullHash.includes('access_token=') || fullHash.includes('type=recovery')) {
-          // لو التوكنات موجودة بدون # إضافية
-          const urlParams = new URLSearchParams(window.location.search || fullHash.substring(1));
-          tokenPart = urlParams.toString();
-        }
-
-        console.log('tokenPart after extraction:', tokenPart);
-
-        // نستخرج الـ parameters
-        const params = new URLSearchParams(tokenPart);
-        const access_token = params.get('access_token');
-        const refresh_token = params.get('refresh_token');
-        const type = params.get('type');
-
-        console.log('Extracted tokens:', { access_token: access_token ? 'موجود' : 'غير موجود', 
-                                         refresh_token: refresh_token ? 'موجود' : 'غير موجود', 
-                                         type });
-
-        if (access_token && refresh_token && type === 'recovery') {
-          // نحط الجلسة لدى Supabase
-          const { data, error } = await supabase.auth.setSession({
-            access_token,
-            refresh_token,
-          });
-
-          if (error) {
-            console.error('setSession error:', error);
-            setMessage('⚠️ الرابط غير صالح أو منتهي الصلاحية.');
-            setValidSession(false);
-          } else {
-            console.log('Session set successfully:', data);
-            
-            // ننظف الـ URL: نحتفظ بالراوت بدون التوكنات
-            try {
-              const cleanUrl = window.location.origin + window.location.pathname + '#/reset-password';
-              window.history.replaceState({}, document.title, cleanUrl);
-            } catch (e) {
-              console.warn('Could not clean URL:', e);
-            }
-
-            setMessage('يمكنك الآن تغيير كلمة المرور.');
-            setValidSession(true);
-          }
-        } else {
-          // إن لم توجد توكنات أو النوع مش recovery: نتحقق هل المستخدم مسجل حالياً
-          const { data, error } = await supabase.auth.getUser();
-          if (!error && data?.user) {
-            // المستخدم مسجل دخول بالفعل
-            setValidSession(true);
-            setMessage('يمكنك الآن تغيير كلمة المرور.');
-          } else {
-            setMessage('⚠️ افتح هذه الصفحة من الرابط المرسل إلى بريدك الإلكتروني.');
-            setValidSession(false);
-          }
-        }
-      } catch (err) {
-        console.error('خطأ في التحقق من الجلسة:', err);
-        setMessage('حدث خطأ غير متوقع.');
-        setValidSession(false);
-      } finally {
-        setChecking(false);
-      }
-    };
-
-    init();
-
-    // Listener احتياطي لأي تغيُّر في auth state
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session ? 'Session exists' : 'No session');
-      if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
-        setValidSession(true);
-        setMessage('يمكنك الآن تغيير كلمة المرور.');
-      } else if (event === 'SIGNED_OUT') {
-        setValidSession(false);
-        setMessage('⚠️ افتح هذه الصفحة من الرابط المرسل إلى بريدك الإلكتروني.');
-      }
-    });
-    
-    return () => subscription?.unsubscribe();
-  }, []);
-
-  const handleUpdatePassword = async (e) => {
+  const handleEmailCheck = async (e) => {
     e.preventDefault();
-    setMessage('');
-    
-    if (newPassword !== confirmPassword) {
-      return setMessage('❌ كلمات المرور غير متطابقة');
-    }
-    
-    if (newPassword.length < 6) {
-      return setMessage('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-    }
-
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ 
-        password: newPassword 
-      });
-      
-      if (error) throw error;
-      
-      setMessage('✅ تم تحديث كلمة المرور بنجاح! جاري إعادة التوجيه لتسجيل الدخول...');
-      
-      // ننتظر شوية ثم نوجه المستخدم لصفحة اللوجين
-      setTimeout(() => navigate('/login'), 2000);
-      
+      const { data, error } = await supabase
+        .from("students")
+        .select("*")
+        .eq("email", email)
+        .single();
+
+      if (error || !data) {
+        setMessage("البريد غير مسجل ❌");
+      } else {
+        setUserInfo(data);
+        setMessage("تم التحقق من البريد بنجاح ✅");
+        setStep("password");
+      }
     } catch (err) {
-      console.error('updateUser error:', err);
-      setMessage('❌ حدث خطأ أثناء التحديث: ' + (err.message || err));
+      setMessage("حدث خطأ أثناء التحقق");
     } finally {
       setLoading(false);
     }
   };
 
-  if (checking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6" dir="rtl">
-        <div className="bg-[#FFF9EF] p-6 rounded shadow text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#665446] mx-auto mb-4"></div>
-          جاري التحقق من الرابط...
-        </div>
-      </div>
-    );
-  }
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (newPassword !== confirmPassword) {
+        setMessage("كلمة المرور غير متطابقة ❌");
+        setLoading(false);
+        return;
+      }
+
+      const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+      const { data, error } = await supabase
+      .from("students")
+      .update({ password_hash: hashedPassword })
+      .eq("email", email);
+    
+
+      if (error) {
+        setMessage("حدث خطأ أثناء تحديث كلمة المرور ❌");
+      } else {
+        setMessage("تم تحديث كلمة المرور بنجاح ✅");
+        setTimeout(() => navigate("/login"), 2000);
+      }
+    } catch (err) {
+      setMessage("حدث خطأ أثناء تحديث كلمة المرور");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6" dir="rtl">
-      <div className="bg-[#FFF9EF] p-8 rounded-xl shadow max-w-md w-full">
-        <h2 className="text-xl font-bold mb-4 text-center">إعادة تعيين كلمة المرور</h2>
+    <AnimatedBackground className="min-h-screen flex items-center justify-center p-6" dir="rtl">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-6">
+        {/* مؤشر الخطوات */}
+        <div className="flex justify-center mt-2">
+          <div className="flex space-x-2">
+            <div className={`w-3 h-3 rounded-full transition-all duration-300 ${step === "email" ? "bg-[#665446]" : "bg-green-500"}`}></div>
+            <div className={`w-3 h-3 rounded-full transition-all duration-300 ${step === "password" ? "bg-[#665446]" : "bg-gray-300"}`}></div>
+          </div>
+        </div>
 
+        {/* رسائل التنبيه */}
         {message && (
-          <div className={`text-center text-sm mb-4 p-3 rounded ${
-            message.includes('✅') ? 'bg-green-100 text-green-700' : 
-            message.includes('❌') || message.includes('⚠️') ? 'bg-red-100 text-red-700' : 
-            'bg-blue-100 text-blue-700'
+          <div className={`text-center text-sm my-4 p-4 rounded-lg ${
+            message.includes("تم التحقق") || message.includes("تم تحديث")
+              ? "bg-green-100 text-green-700 border border-green-200"
+              : message.includes("غير مسجل") || message.includes("حدث خطأ") || message.includes("غير متطابقة")
+              ? "bg-red-100 text-red-700 border border-red-200"
+              : "bg-blue-100 text-blue-700 border border-blue-200"
           }`}>
             {message}
           </div>
         )}
 
-        {validSession ? (
-          <form onSubmit={handleUpdatePassword} className="space-y-4">
+        {/* محتوى الخطوات */}
+        {step === "email" ? (
+          <form onSubmit={handleEmailCheck} className="space-y-6">
             <div>
-              <input 
-                type="password" 
-                placeholder="كلمة المرور الجديدة" 
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)} 
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-[#665446]" 
-                required 
-                minLength="6"
-              />
+              <label className="block text-sm font-medium text-[#665446] mb-2">البريد الإلكتروني</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="example@email.com"
+                  className="w-full p-3 pr-10 border border-[#CDC0B6]/30 rounded-lg bg-white/80 backdrop-blur-sm focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/20 transition-all duration-300"
+                  required
+                  disabled={loading}
+                />
+                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              </div>
             </div>
-            <div>
-              <input 
-                type="password" 
-                placeholder="تأكيد كلمة المرور" 
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)} 
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-[#665446]" 
-                required 
-                minLength="6"
-              />
-            </div>
-            <button 
-              type="submit" 
-              disabled={loading || !newPassword || !confirmPassword} 
-              className="w-full py-3 bg-[#665446] text-white rounded hover:bg-[#554433] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'جاري التحديث...' : 'تحديث كلمة المرور'}
+
+            <button type="submit" disabled={loading || !email.trim()} className="w-full py-3 bg-[#665446] text-white rounded-lg hover:bg-[#5A4633] hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2">
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  جاري التحقق...
+                </>
+              ) : (
+                <>
+                  التحقق من البريد
+                  <ArrowRight size={20} />
+                </>
+              )}
             </button>
+
+            <div className="text-center">
+              <button type="button" onClick={() => navigate("/login")} className="text-[#665446] underline text-sm hover:no-underline transition-colors duration-200">العودة لتسجيل الدخول</button>
+            </div>
           </form>
         ) : (
-          <div className="text-center">
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded">
-              <p className="font-semibold">لا يمكنك تغيير كلمة المرور هنا</p>
-              <p className="text-sm mt-2">افتح الرابط المرسل على بريدك الإلكتروني مرة أخرى</p>
+          <form onSubmit={handlePasswordUpdate} className="space-y-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-green-800"><strong>المستخدم:</strong> {userInfo?.name || userInfo?.email}</p>
+              <p className="text-xs text-green-600 mt-1"><strong>البريد:</strong> {userInfo?.email}</p>
             </div>
-            <button 
-              onClick={() => navigate('/forgot-password')} 
-              className="mt-4 text-[#665446] underline hover:no-underline"
-            >
-              طلب رابط جديد
+
+            <div>
+              <label className="block text-sm font-medium text-[#665446] mb-2">كلمة المرور الجديدة</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full p-3 pr-10 border border-[#CDC0B6]/30 rounded-lg bg-white/80 backdrop-blur-sm focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/20 transition-all duration-300"
+                  required
+                  disabled={loading}
+                />
+                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#665446] mb-2">تأكيد كلمة المرور</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full p-3 pr-10 border border-[#CDC0B6]/30 rounded-lg bg-white/80 backdrop-blur-sm focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/20 transition-all duration-300"
+                  required
+                  disabled={loading}
+                />
+                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              </div>
+            </div>
+
+            <button type="submit" disabled={loading || !newPassword.trim() || newPassword !== confirmPassword} className="w-full py-3 bg-[#665446] text-white rounded-lg hover:bg-[#5A4633] hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2">
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  جاري التحديث...
+                </>
+              ) : (
+                <>
+                  تحديث كلمة المرور
+                  <CheckCircle size={20} />
+                </>
+              )}
             </button>
-          </div>
+
+            <div className="text-center">
+              <button type="button" onClick={() => navigate("/login")} className="text-[#665446] underline text-sm hover:no-underline transition-colors duration-200">العودة لتسجيل الدخول</button>
+            </div>
+          </form>
         )}
       </div>
-    </div>
+    </AnimatedBackground>
   );
-};
-
-export default ResetPassword;
+}

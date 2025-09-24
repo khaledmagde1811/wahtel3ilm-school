@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../Utilities/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +9,15 @@ const ExamForm = ({ exam, lessonId }) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [processing, setProcessing] = useState(false);
   const navigate = useNavigate();
+
+  // إعادة تهيئة الكومبوننت عند تغيير lessonId أو exam
+  useEffect(() => {
+    setAnswers({});
+    setSubmitted(false);
+    setScore(null);
+    setCurrentQuestion(0);
+    setProcessing(false);
+  }, [lessonId, exam]);
 
   if (!exam || !exam.questions) {
     return (
@@ -154,9 +163,10 @@ const ExamForm = ({ exam, lessonId }) => {
           } else {
             console.log(`Access granted to lesson ${nextLesson.id}: ${nextLesson.title}`);
             
-            // التنقل إلى المحاضرة التالية بعد 3 ثوان
+            // التنقل إلى المحاضرة التالية مع إعادة تحميل الصفحة
             setTimeout(() => {
-              navigate(`/lesson/${nextLesson.id}`);
+              // هنا سنستخدم window.location بدلاً من navigate لضمان إعادة تحميل كامل
+              window.location.href = `/lesson/${nextLesson.id}`;
             }, 3000);
           }
         } else {
