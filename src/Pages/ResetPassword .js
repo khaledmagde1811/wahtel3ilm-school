@@ -21,52 +21,52 @@ const ResetPassword = () => {
     checkSession();
   }, []);
 
-  const checkSession = async () => {
-    try {
-      // التحقق من وجود access_token في URL
-      const accessToken = searchParams.get('access_token');
-      const refreshToken = searchParams.get('refresh_token');
-
-      if (accessToken && refreshToken) {
-        // إعداد الجلسة باستخدام الـ tokens
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        if (error) {
-          console.error('خطأ في إعداد الجلسة:', error);
-          setMessage('الرابط غير صحيح أو منتهي الصلاحية');
-          setMessageType('error');
-          setIsValidSession(false);
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        // ناخد الجزء بعد الـ #
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+  
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+  
+          if (error) {
+            setMessage("الرابط غير صحيح أو منتهي الصلاحية");
+            setMessageType("error");
+            setIsValidSession(false);
+          } else {
+            setMessage("يمكنك الآن تغيير كلمة المرور");
+            setMessageType("success");
+            setIsValidSession(true);
+          }
         } else {
-          setIsValidSession(true);
-          setMessage('يمكنك الآن تغيير كلمة المرور');
-          setMessageType('success');
+          const { data: { user }, error } = await supabase.auth.getUser();
+          if (error || !user) {
+            setMessage("الرابط غير صحيح أو منتهي الصلاحية. يرجى طلب رابط جديد.");
+            setMessageType("error");
+            setIsValidSession(false);
+          } else {
+            setIsValidSession(true);
+            setMessage("يمكنك الآن تغيير كلمة المرور");
+            setMessageType("success");
+          }
         }
-      } else {
-        // التحقق من الجلسة الحالية
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error || !user) {
-          setMessage('الرابط غير صحيح أو منتهي الصلاحية. يرجى طلب رابط جديد.');
-          setMessageType('error');
-          setIsValidSession(false);
-        } else {
-          setIsValidSession(true);
-          setMessage('يمكنك الآن تغيير كلمة المرور');
-          setMessageType('success');
-        }
+      } catch (err) {
+        setMessage("حدث خطأ غير متوقع");
+        setMessageType("error");
+        setIsValidSession(false);
+      } finally {
+        setIsCheckingSession(false);
       }
-    } catch (error) {
-      console.error('خطأ في التحقق من الجلسة:', error);
-      setMessage('حدث خطأ غير متوقع');
-      setMessageType('error');
-      setIsValidSession(false);
-    } finally {
-      setIsCheckingSession(false);
-    }
-  };
+    };
+  
+    checkSession();
+  }, []);
 
   const validatePassword = (password) => {
     return {
