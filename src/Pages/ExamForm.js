@@ -146,12 +146,12 @@ const ExamForm = ({ exam, lessonId }) => {
         const nextLesson = allLessons[currentIndex + 1];
 
         if (nextLesson) {
-          // فتح المحاضرة التالية للطالب
+          // فتح المحاضرة التالية للطالب - الإصلاح الأول: استخدام studentIntId بدلاً من authId
           const { error: accessError } = await supabase
             .from('student_lesson_access')
             .upsert(
               [{
-                student_id: studentIntId, // استخدام student_id الصحيح بدلاً من auth_id
+                student_id: studentIntId, // ✅ تم الإصلاح: استخدام student_id الصحيح
                 lesson_id: nextLesson.id,
                 is_open: true
               }],
@@ -163,9 +163,8 @@ const ExamForm = ({ exam, lessonId }) => {
           } else {
             console.log(`Access granted to lesson ${nextLesson.id}: ${nextLesson.title}`);
             
-            // التنقل إلى المحاضرة التالية مع إعادة تحميل الصفحة
+            // الإصلاح الثاني: استخدام window.location.href لضمان إعادة التحميل والتهيئة
             setTimeout(() => {
-              // هنا سنستخدم window.location بدلاً من navigate لضمان إعادة تحميل كامل
               window.location.href = `/lesson/${nextLesson.id}`;
             }, 3000);
           }
