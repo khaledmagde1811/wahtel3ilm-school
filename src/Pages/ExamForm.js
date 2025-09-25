@@ -163,9 +163,9 @@ const ExamForm = ({ exam, lessonId }) => {
           } else {
             console.log(`Access granted to lesson ${nextLesson.id}: ${nextLesson.title}`);
             
-            // التنقل إلى المحاضرة التالية مع الـ URL الصحيح
+            // التنقل إلى المحاضرة التالية مع الهاش
             setTimeout(() => {
-              window.location.href = `/#/lesson/${nextLesson.id}`;
+              window.location.href = `${window.location.origin}/#/lesson/${nextLesson.id}`;
             }, 3000);
           }
         } else {
