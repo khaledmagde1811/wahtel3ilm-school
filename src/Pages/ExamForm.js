@@ -96,12 +96,12 @@ const ExamForm = ({ exam, lessonId }) => {
 
       const studentIntId = studentRecord.id;
 
-      // حفظ نتيجة الامتحان في جدول student_lessons
+      // حفظ نتيجة الامتحان في جدول student_lessons (يستخدم integer student_id)
       const { error: lessonError } = await supabase
         .from('student_lessons')
         .upsert(
           [{
-            student_id: studentIntId,
+            student_id: studentIntId, // ✅ هنا نستخدم integer student_id
             lesson_id: parseInt(lessonId),
             passed: percentage >= exam.passing_score,
             score: percentage
@@ -146,12 +146,12 @@ const ExamForm = ({ exam, lessonId }) => {
         const nextLesson = allLessons[currentIndex + 1];
 
         if (nextLesson) {
-          // فتح المحاضرة التالية للطالب - الإصلاح الأول: استخدام studentIntId بدلاً من authId
+          // فتح المحاضرة التالية للطالب - استخدام authId لأن الجدول يتوقع UUID
           const { error: accessError } = await supabase
             .from('student_lesson_access')
             .upsert(
               [{
-                student_id: studentIntId, // ✅ تم الإصلاح: استخدام student_id الصحيح
+                student_id: authId, // ✅ صحيح: الجدول يتوقع UUID (auth_id) مش integer
                 lesson_id: nextLesson.id,
                 is_open: true
               }],
@@ -163,9 +163,9 @@ const ExamForm = ({ exam, lessonId }) => {
           } else {
             console.log(`Access granted to lesson ${nextLesson.id}: ${nextLesson.title}`);
             
-            // الإصلاح الثاني: استخدام window.location.href لضمان إعادة التحميل والتهيئة
+            // التنقل إلى المحاضرة التالية مع الـ URL الصحيح
             setTimeout(() => {
-              window.location.href = `/lesson/${nextLesson.id}`;
+              window.location.href = `/#/lesson/${nextLesson.id}`;
             }, 3000);
           }
         } else {
