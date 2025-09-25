@@ -151,7 +151,7 @@ const ExamForm = ({ exam, lessonId }) => {
             .from('student_lesson_access')
             .upsert(
               [{
-                student_id: authId,
+                student_id: studentIntId, // استخدام student_id الصحيح بدلاً من auth_id
                 lesson_id: nextLesson.id,
                 is_open: true
               }],
