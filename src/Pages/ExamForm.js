@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../Utilities/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +9,15 @@ const ExamForm = ({ exam, lessonId }) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [processing, setProcessing] = useState(false);
   const navigate = useNavigate();
+
+  // إعادة تهيئة الكومبوننت عند تغيير lessonId أو exam
+  useEffect(() => {
+    setAnswers({});
+    setSubmitted(false);
+    setScore(null);
+    setCurrentQuestion(0);
+    setProcessing(false);
+  }, [lessonId, exam]);
 
   if (!exam || !exam.questions) {
     return (
@@ -137,12 +146,12 @@ const ExamForm = ({ exam, lessonId }) => {
         const nextLesson = allLessons[currentIndex + 1];
 
         if (nextLesson) {
-          // فتح المحاضرة التالية للطالب
+          // فتح المحاضرة التالية للطالب - الإصلاح الأول: استخدام studentIntId بدلاً من authId
           const { error: accessError } = await supabase
             .from('student_lesson_access')
             .upsert(
               [{
-                student_id: authId,
+                student_id: studentIntId, // ✅ تم الإصلاح: استخدام student_id الصحيح
                 lesson_id: nextLesson.id,
                 is_open: true
               }],
@@ -154,9 +163,9 @@ const ExamForm = ({ exam, lessonId }) => {
           } else {
             console.log(`Access granted to lesson ${nextLesson.id}: ${nextLesson.title}`);
             
-            // التنقل إلى المحاضرة التالية بعد 3 ثوان
+            // الإصلاح الثاني: استخدام window.location.href لضمان إعادة التحميل والتهيئة
             setTimeout(() => {
-              navigate(`/lesson/${nextLesson.id}`);
+              window.location.href = `/lesson/${nextLesson.id}`;
             }, 3000);
           }
         } else {
