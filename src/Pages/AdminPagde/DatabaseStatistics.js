@@ -1,239 +1,287 @@
-import React, { useState, useEffect } from 'react';
-import { Users, BookOpen, GraduationCap, FileText, Heart, Award, UserCheck, Clock, TrendingUp, BarChart3 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Users, BookOpen, GraduationCap, BarChart3, Search, RefreshCw, Download } from 'lucide-react';
 import { supabase } from '../../Utilities/supabaseClient';
+
+/**
+ * DatabaseStatistics (Enhanced)
+ * - إجماليات مختصرة
+ * - فلترة حسب المستوى والكورس
+ * - تفاعل الدروس (open_students + open_times + unique_users) مع Views إن وجدت + Fallback
+ * - Real-time تحديث تلقائي
+ * - بحث Debounced + حد أقصى للعرض + تصدير CSV
+ * - رسم بياني Top 5 (بدون مكتبات)
+ * - ثيم Amber/Brownish/Yellow/Orange
+ */
+
+const PALETTE = {
+  amberA: '#FFBF00',
+  amberB: '#FFC107',
+  yellow: '#FFD54F',
+  orange: '#FB8C00',
+  brown: '#665446',
+  brownSoft: '#8B7355',
+  grayBorder: '#F3E6D4',
+};
 
 const DatabaseStatistics = () => {
   const [stats, setStats] = useState({
     totalStudents: 0,
-    activeStudents: 0,
     totalTeachers: 0,
-    activeTeachers: 0,
     totalCourses: 0,
-    totalLevels: 0,
     totalLessons: 0,
-    openLessons: 0,
-    closedLessons: 0,
-    totalArticles: 0,
-    openArticles: 0,
-    totalExams: 0,
-    totalRegistrations: 0,
-    totalLikes: 0,
-    passedLessons: 0,
-    failedLessons: 0
   });
 
+  // دروس + تفاعل
+  const [lessonRows, setLessonRows] = useState([]); // [{id,title,openStudents,openTimes,uniqueUsers, course_id?, level_id?}]
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loadingLessons, setLoadingLessons] = useState(true);
+  const [err, setErr] = useState(null);
 
-  // جلب الإحصائيات من Supabase
-  useEffect(() => {
-    const fetchStatistics = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  // فلترة/بحث/عرض
+  const [q, setQ] = useState('');
+  const [limit, setLimit] = useState(15);
+  const debouncedQ = useDebouncedValue(q, 250);
 
-        // جلب إحصائيات الطلاب
-        const { data: studentsData, error: studentsError } = await supabase
-          .from('students')
-          .select('status');
-        
-        if (studentsError) throw studentsError;
+  // فلترة إضافية: المستوى والكورس
+  const [levels, setLevels] = useState([]);     // [{id,name}]
+  const [courses, setCourses] = useState([]);   // [{id,name,level_id}]
+  const [selectedLevel, setSelectedLevel] = useState('all');
+  const [selectedCourse, setSelectedCourse] = useState('all');
 
-        const totalStudents = studentsData?.length || 0;
-        const activeStudents = studentsData?.filter(student => student.status === 'نشط')?.length || 0;
+  // --- تحميل الإجماليات ---
+  const loadTotals = async () => {
+    try {
+      setErr(null);
+      const [students, teachers, coursesQ, lessons] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact', head: true }),
+        supabase.from('teachers').select('id', { count: 'exact', head: true }),
+        supabase.from('courses').select('id', { count: 'exact', head: true }),
+        supabase.from('lessons').select('id', { count: 'exact', head: true }),
+      ]);
+      if (students.error) throw students.error;
+      if (teachers.error) throw teachers.error;
+      if (coursesQ.error) throw coursesQ.error;
+      if (lessons.error) throw lessons.error;
 
-        // جلب إحصائيات المعلمين
-        const { data: teachersData, error: teachersError } = await supabase
-          .from('teachers')
-          .select('status');
-        
-        if (teachersError) throw teachersError;
+      setStats({
+        totalStudents: students.count || 0,
+        totalTeachers: teachers.count || 0,
+        totalCourses: coursesQ.count || 0,
+        totalLessons: lessons.count || 0,
+      });
+    } catch (e) {
+      console.error('Totals error:', e);
+      setErr('تعذّر تحميل الإجماليات.');
+    }
+  };
 
-        const totalTeachers = teachersData?.length || 0;
-        const activeTeachers = teachersData?.filter(teacher => teacher.status === 'نشط')?.length || 0;
+  // --- تحميل القوائم (Levels/Courses) ---
+  const loadTaxonomies = async () => {
+    try {
+      const [{ data: lv, error: lvErr }, { data: cs, error: csErr }] = await Promise.all([
+        supabase.from('levels').select('id,name'),
+        supabase.from('courses').select('id,name,level_id'),
+      ]);
+      if (lvErr) throw lvErr;
+      if (csErr) throw csErr;
+      setLevels(lv || []);
+      setCourses(cs || []);
+    } catch (e) {
+      console.error('Taxonomies error:', e);
+      // مش مانع رئيسي؛ نكمّل بدون فلترة هرمية
+    }
+  };
 
-        // جلب إحصائيات الكورسات
-        const { data: coursesData, error: coursesError } = await supabase
-          .from('courses')
-          .select('id');
-        
-        if (coursesError) throw coursesError;
+  // --- تحميل تفاعل الدروس (View أولًا، مع Fallback) ---
+  const loadLessonEngagement = async () => {
+    setLoadingLessons(true);
+    try {
+      setErr(null);
 
-        const totalCourses = coursesData?.length || 0;
+      // 1) حاول تجيب من الفيوز مباشرة (تشمل العنوان + open_students + views)
+      const { data: viewData, error: viewErr } = await supabase
+        .from('lesson_open_summary')
+        .select(`
+          lesson_id,
+          title,
+          open_students,
+          lesson_views_summary!left(open_times, unique_users)
+        `)
+        .order('open_students', { ascending: false })
+        .range(0, 999);
 
-        // جلب إحصائيات المستويات
-        const { data: levelsData, error: levelsError } = await supabase
-          .from('levels')
-          .select('id');
-        
-        if (levelsError) throw levelsError;
-
-        const totalLevels = levelsData?.length || 0;
-
-        // جلب إحصائيات الدروس
-        const { data: lessonsData, error: lessonsError } = await supabase
+      if (!viewErr && Array.isArray(viewData)) {
+        // محتاجين course_id و level_id للفلاتر --> نجيبهم من lessons/courses
+        const { data: lessonsMeta, error: lessonsErr } = await supabase
           .from('lessons')
-          .select('status');
-        
-        if (lessonsError) throw lessonsError;
+          .select('id, course_id');
+        if (lessonsErr) throw lessonsErr;
 
-        const totalLessons = lessonsData?.length || 0;
-        const openLessons = lessonsData?.filter(lesson => lesson.status === 'مفتوحة')?.length || 0;
-        const closedLessons = lessonsData?.filter(lesson => lesson.status === 'مغلقة')?.length || 0;
+        const { data: coursesMeta, error: coursesErr } = await supabase
+          .from('courses')
+          .select('id, level_id');
+        if (coursesErr) throw coursesErr;
 
-        // جلب إحصائيات المقالات
-        const { data: articlesData, error: articlesError } = await supabase
-          .from('articles')
-          .select('status');
-        
-        if (articlesError) throw articlesError;
+        const courseToLevel = new Map(coursesMeta?.map(c => [c.id, c.level_id]) || []);
+        const lessonToCourse = new Map(lessonsMeta?.map(l => [l.id, l.course_id]) || []);
 
-        const totalArticles = articlesData?.length || 0;
-        const openArticles = articlesData?.filter(article => article.status === 'مفتوح')?.length || 0;
-
-        // جلب إحصائيات الامتحانات
-        const { data: examsData, error: examsError } = await supabase
-          .from('exams')
-          .select('id');
-        
-        if (examsError) throw examsError;
-
-        const totalExams = examsData?.length || 0;
-
-        // جلب إحصائيات التسجيلات
-        const { data: registrationsData, error: registrationsError } = await supabase
-          .from('course_registration')
-          .select('id');
-        
-        if (registrationsError) throw registrationsError;
-
-        const totalRegistrations = registrationsData?.length || 0;
-
-        // جلب إحصائيات الإعجابات
-        const { data: likesData, error: likesError } = await supabase
-          .from('likes')
-          .select('id');
-        
-        if (likesError) throw likesError;
-
-        const totalLikes = likesData?.length || 0;
-
-        // جلب إحصائيات الدروس المجتازة
-        const { data: studentLessonsData, error: studentLessonsError } = await supabase
-          .from('student_lessons')
-          .select('passed');
-        
-        if (studentLessonsError) throw studentLessonsError;
-
-        const passedLessons = studentLessonsData?.filter(sl => sl.passed === true)?.length || 0;
-        const failedLessons = studentLessonsData?.filter(sl => sl.passed === false)?.length || 0;
-
-        // تحديث الحالة بالبيانات الحقيقية
-        setStats({
-          totalStudents,
-          activeStudents,
-          totalTeachers,
-          activeTeachers,
-          totalCourses,
-          totalLevels,
-          totalLessons,
-          openLessons,
-          closedLessons,
-          totalArticles,
-          openArticles,
-          totalExams,
-          totalRegistrations,
-          totalLikes,
-          passedLessons,
-          failedLessons
+        const rows = (viewData || []).map((r) => {
+          const course_id = lessonToCourse.get(r.lesson_id) ?? null;
+          const level_id  = (course_id != null ? courseToLevel.get(course_id) : null) ?? null;
+          return {
+            id: r.lesson_id,
+            title: r.title,
+            openStudents: r.open_students ?? 0,
+            openTimes: r.lesson_views_summary?.open_times ?? null,
+            uniqueUsers: r.lesson_views_summary?.unique_users ?? null,
+            course_id,
+            level_id,
+          };
         });
 
-      } catch (err) {
-        console.error('خطأ في جلب الإحصائيات:', err);
-        setError('حدث خطأ في تحميل الإحصائيات. يرجى المحاولة مرة أخرى.');
-      } finally {
-        setLoading(false);
+        setLessonRows(rows);
+        setLoadingLessons(false);
+        return;
       }
-    };
 
-    fetchStatistics();
+      // 2) Fallback: نجلب من الجداول ونُجمّع في الواجهة
+      const [{ data: lessonsData, error: lessonsErr }, { data: sla, error: slaErr }] = await Promise.all([
+        supabase.from('lessons').select('id,title,course_id'),
+        supabase.from('student_lesson_access').select('lesson_id,is_open'),
+      ]);
+      if (lessonsErr) throw lessonsErr;
+      if (slaErr) throw slaErr;
+
+      // جرّب lesson_views: لو خطأ، تجاهله
+      let views = [];
+      const { data: lv, error: lvErr } = await supabase
+        .from('lesson_views')
+        .select('lesson_id,student_id');
+      if (!lvErr && Array.isArray(lv)) views = lv;
+
+      // جلب level_id عبر الكورسات
+      const { data: coursesMeta, error: cErr } = await supabase
+        .from('courses')
+        .select('id, level_id');
+      if (cErr) throw cErr;
+      const courseToLevel = new Map(coursesMeta?.map(c => [c.id, c.level_id]) || []);
+
+      const openMap = new Map(); // lesson_id -> open_students
+      sla?.forEach((r) => {
+        if (r.is_open) {
+          openMap.set(r.lesson_id, (openMap.get(r.lesson_id) || 0) + 1);
+        }
+      });
+
+      const viewsTotal = new Map(); // lesson_id -> open_times
+      const viewsUnique = new Map(); // lesson_id -> Set(student_id)
+      views.forEach((v) => {
+        viewsTotal.set(v.lesson_id, (viewsTotal.get(v.lesson_id) || 0) + 1);
+        if (!viewsUnique.has(v.lesson_id)) viewsUnique.set(v.lesson_id, new Set());
+        if (v.student_id) viewsUnique.get(v.lesson_id).add(v.student_id);
+      });
+
+      const rows = (lessonsData || []).map((l) => {
+        const level_id = courseToLevel.get(l.course_id) ?? null;
+        return {
+          id: l.id,
+          title: l.title,
+          openStudents: openMap.get(l.id) || 0,
+          openTimes: views.length ? viewsTotal.get(l.id) || 0 : null,
+          uniqueUsers: views.length ? (viewsUnique.get(l.id)?.size || 0) : null,
+          course_id: l.course_id ?? null,
+          level_id,
+        };
+      });
+
+      rows.sort((a, b) => {
+        if (b.openStudents !== a.openStudents) return b.openStudents - a.openStudents;
+        return (b.openTimes || 0) - (a.openTimes || 0);
+      });
+
+      setLessonRows(rows);
+    } catch (e) {
+      console.error('Lessons error:', e);
+      setErr((prev) => prev || 'تعذّر تحميل تفاعل الدروس.');
+    } finally {
+      setLoadingLessons(false);
+    }
+  };
+
+  // مُحمّل أولي
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      await Promise.all([loadTotals(), loadTaxonomies(), loadLessonEngagement()]);
+      setLoading(false);
+    })();
   }, []);
 
-  // دالة إعادة تحميل الإحصائيات
-  const refreshStatistics = () => {
-    setLoading(true);
-    window.location.reload();
-  };
+  // Real-time: تحديث تلقائي عند تغيّر الجداول
+  useEffect(() => {
+    const ch = supabase
+      .channel('stats-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'student_lesson_access' }, () => {
+        loadLessonEngagement();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lesson_views' }, () => {
+        loadLessonEngagement();
+      })
+      .subscribe();
 
-  const StatCard = ({ title, value, icon: Icon, color = "#665446", subtitle }) => (
-    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow duration-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium text-gray-600 mb-1">{title}</h3>
-          <p className="text-3xl font-bold" style={{ color }}>
-            {loading ? '...' : value.toLocaleString()}
-          </p>
-          {subtitle && (
-            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
-          )}
-        </div>
-        <Icon className="h-8 w-8" style={{ color }} />
-      </div>
-    </div>
-  );
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, []);
 
-  const ProgressBar = ({ label, current, total, color = "#665446" }) => {
-    const percentage = total > 0 ? (current / total) * 100 : 0;
-    
+  // تطبيق الفلاتر + البحث + الحد
+  const filteredLessons = useMemo(() => {
+    let list = lessonRows;
+
+    if (selectedLevel !== 'all') {
+      const levelId = Number(selectedLevel);
+      list = list.filter(r => r.level_id === levelId);
+    }
+    if (selectedCourse !== 'all') {
+      const courseId = Number(selectedCourse);
+      list = list.filter(r => r.course_id === courseId);
+    }
+
+    const needle = debouncedQ.trim().toLowerCase();
+    if (needle) {
+      list = list.filter(
+        (r) => r.title.toLowerCase().includes(needle) || String(r.id).includes(needle)
+      );
+    }
+
+    return list.slice(0, limit);
+  }, [lessonRows, selectedLevel, selectedCourse, debouncedQ, limit]);
+
+  // Top 5 (من كل البيانات بعد الفلاتر الهرمية فقط؛ بدون حد/بحث)
+  const top5 = useMemo(() => {
+    let list = lessonRows;
+    if (selectedLevel !== 'all') {
+      const levelId = Number(selectedLevel);
+      list = list.filter(r => r.level_id === levelId);
+    }
+    if (selectedCourse !== 'all') {
+      const courseId = Number(selectedCourse);
+      list = list.filter(r => r.course_id === courseId);
+    }
+    const sorted = [...list].sort((a, b) => {
+      if (b.openStudents !== a.openStudents) return b.openStudents - a.openStudents;
+      return (b.openTimes || 0) - (a.openTimes || 0);
+    });
+    return sorted.slice(0, 5);
+  }, [lessonRows, selectedLevel, selectedCourse]);
+
+  // UI
+  if (loading) {
     return (
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium" style={{ color: "#665446" }}>{label}</span>
-          <span className="text-sm" style={{ color: "#665446" }}>
-            {current.toLocaleString()} / {total.toLocaleString()} ({percentage.toFixed(1)}%)
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="h-2 rounded-full transition-all duration-300" 
-            style={{ 
-              backgroundColor: color, 
-              width: `${Math.min(percentage, 100)}%` 
-            }}
-          ></div>
-        </div>
-      </div>
-    );
-  };
-
-  if (error && !loading) {
-    return (
-      <div className="min-h-screen p-6" style={{ backgroundColor: '#FFF9EF' }}>
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <h2 className="text-2xl font-bold text-red-800 mb-4">خطأ في تحميل البيانات</h2>
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={refreshStatistics}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors duration-200"
-            >
-              إعادة المحاولة
-            </button>
-          </div>
-          
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mt-6">
-            <h3 className="text-lg font-bold text-yellow-800 mb-3">تأكد من وجود هذه المتغيرات في ملف .env:</h3>
-            <div className="text-yellow-700 space-y-2">
-              <p className="font-medium">للـ React:</p>
-              <pre className="bg-gray-100 p-3 rounded text-sm">
-{`REACT_APP_SUPABASE_URL=https://your-project.supabase.co
-REACT_APP_SUPABASE_ANON_KEY=your-anon-key-here`}
-              </pre>
-              <p className="text-sm text-yellow-600 mt-3">
-                تأكد من إعادة تشغيل الخادم بعد تعديل ملف .env
-              </p>
-            </div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF9EF' }}>
+        <div className="flex items-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: PALETTE.brown }} />
+          <span className="text-lg" style={{ color: PALETTE.brown }}>جاري تحميل البيانات…</span>
         </div>
       </div>
     );
@@ -241,207 +289,199 @@ REACT_APP_SUPABASE_ANON_KEY=your-anon-key-here`}
 
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: '#FFF9EF' }}>
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
+      <div className="max-w-7xl mx-auto space-y-8">
+
+        {/* رأس + تحديث */}
+        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div>
-            <h1 className="text-4xl font-bold mb-2" style={{ color: '#665446' }}>
-              لوحة الإحصائيات
-            </h1>
-            <p className="text-lg" style={{ color: '#665446' }}>
-              نظرة شاملة على إحصائيات قاعدة البيانات
+            <h1 className="text-3xl md:text-4xl font-bold" style={{ color: PALETTE.brown }}>لوحة الإحصائيات</h1>
+            <p className="text-sm md:text-base" style={{ color: PALETTE.brownSoft }}>
+              إجماليات + فلترة المستويات/الكورسات + تفاعل الدروس + Top 5 + تصدير CSV
             </p>
           </div>
-          
           <button
-            onClick={refreshStatistics}
-            disabled={loading}
-            className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg shadow-md border border-gray-200 transition-colors duration-200 disabled:opacity-50"
-            style={{ color: '#665446' }}
+            onClick={() => { loadTotals(); loadLessonEngagement(); }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 transition"
+            style={{ borderColor: '#eee', color: PALETTE.brown }}
+            title="تحديث يدوي"
           >
-            {loading ? 'جاري التحميل...' : 'تحديث البيانات'}
+            <RefreshCw className="w-4 h-4" />
+            تحديث
           </button>
+        </header>
+
+        {/* كروت إجماليات */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard title="الطلاب" value={stats.totalStudents} color={PALETTE.brown} icon={Users} />
+          <StatCard title="المعلمين" value={stats.totalTeachers} color={PALETTE.orange} icon={GraduationCap} />
+          <StatCard title="الكورسات" value={stats.totalCourses} color={PALETTE.amberB} icon={BookOpen} />
+          <StatCard title="الدروس" value={stats.totalLessons} color={PALETTE.yellow} icon={BarChart3} />
+        </section>
+
+        {/* فلاتر المستوى/الكورس + بحث + حد */}
+        <section className="bg-white rounded-xl border p-4" style={{ borderColor: PALETTE.grayBorder }}>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div>
+              <label className="block text-xs mb-1" style={{ color: PALETTE.brownSoft }}>المستوى</label>
+              <select
+                value={selectedLevel}
+                onChange={(e) => { setSelectedLevel(e.target.value); setSelectedCourse('all'); }}
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                style={{ borderColor: '#F0E0C8', color: PALETTE.brown }}
+              >
+                <option value="all">الكل</option>
+                {levels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1" style={{ color: PALETTE.brownSoft }}>الكورس</label>
+              <select
+                value={selectedCourse}
+                onChange={(e) => setSelectedCourse(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                style={{ borderColor: '#F0E0C8', color: PALETTE.brown }}
+              >
+                <option value="all">الكل</option>
+                {courses
+                  .filter(c => selectedLevel === 'all' || c.level_id === Number(selectedLevel))
+                  .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 border rounded-lg px-3 py-2 bg-white"
+                 style={{ borderColor: '#F0E0C8' }}>
+              <Search className="w-4 h-4" style={{ color: PALETTE.orange }} />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="ابحث باسم الدرس أو رقمه…"
+                className="w-full outline-none text-sm bg-transparent"
+                style={{ color: PALETTE.brown }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <label className="text-xs" style={{ color: PALETTE.brownSoft }}>صفوف:</label>
+                <select
+                  value={limit}
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                  className="border rounded px-2 py-1 text-sm"
+                  style={{ borderColor: '#F0E0C8', color: PALETTE.brown }}
+                >
+                  {[10, 15, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+
+              <button
+                onClick={() => downloadCSV(filteredLessons, 'lessons_engagement.csv')}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 transition"
+                style={{ borderColor: '#eee', color: PALETTE.orange }}
+                title="تصدير CSV للعرض الحالي"
+              >
+                <Download className="w-4 h-4" />
+                CSV
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Top 5 Chart */}
+        <section className="bg-white rounded-xl border p-4" style={{ borderColor: PALETTE.grayBorder }}>
+          <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: PALETTE.brown }}>
+            أعلى 5 دروس تفاعلًا
+          </h2>
+
+          {top5.length === 0 ? (
+            <p className="text-sm" style={{ color: PALETTE.brownSoft }}>لا توجد بيانات متاحة للرسم.</p>
+          ) : (
+            <div className="space-y-3">
+              {top5.map((item, idx) => {
+                const max = top5[0].openStudents || 1;
+                const width = Math.max(6, Math.round((item.openStudents / max) * 100)); // %
+                return (
+                  <div key={item.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="font-semibold truncate pr-2" style={{ color: PALETTE.brown }}>
+                        {idx + 1}. {item.title}
+                      </div>
+                      <div className="text-xs" style={{ color: PALETTE.brownSoft }}>
+                        طلاب فُتح لهم: <b style={{ color: PALETTE.orange }}>{item.openStudents}</b>
+                      </div>
+                    </div>
+                    <div className="w-full bg-amber-50 rounded-full h-3 border" style={{ borderColor: '#F9F1E4' }}>
+                      <div
+                        className="h-3 rounded-full"
+                        style={{
+                          width: `${width}%`,
+                          background: `linear-gradient(90deg, ${PALETTE.amberA}, ${PALETTE.orange})`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* جدول تفاعل الدروس */}
+        <section className="bg-white rounded-xl border p-4 md:p-6" style={{ borderColor: PALETTE.grayBorder }}>
+          <h2 className="text-xl md:text-2xl font-bold mb-4" style={{ color: PALETTE.brown }}>تفاعل الدروس</h2>
+
+          {loadingLessons ? (
+            <div className="py-10 text-center" style={{ color: PALETTE.brownSoft }}>
+              جاري تحميل تفاعل الدروس…
+            </div>
+          ) : (
+            <div className="overflow-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-amber-50">
+                    <Th>الدرس</Th>
+                    <Th>طلاب فُتح لهم</Th>
+                    <Th>مرات الفتح</Th>
+                    <Th>طلاب مميزون (views)</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLessons.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-6" style={{ color: PALETTE.brownSoft }}>
+                        لا توجد بيانات مطابقة.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredLessons.map((r) => (
+                      <tr key={r.id} className="odd:bg-white even:bg-amber-50/30">
+                        <Td>
+                          <div className="font-semibold" style={{ color: PALETTE.brown }}>
+                            {r.title}
+                          </div>
+                          <div className="text-xs" style={{ color: PALETTE.brownSoft }}>#{r.id}</div>
+                        </Td>
+                        <Td><StrongNumber>{r.openStudents}</StrongNumber></Td>
+                        <Td>{r.openTimes != null ? <StrongNumber>{r.openTimes}</StrongNumber> : <Dash />}</Td>
+                        <Td>{r.uniqueUsers != null ? <StrongNumber>{r.uniqueUsers}</StrongNumber> : <Dash />}</Td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* فوتر */}
+        <div className="text-right text-xs" style={{ color: PALETTE.brownSoft }}>
+          آخر تحديث: {new Date().toLocaleString('ar-EG')}
         </div>
 
-        {loading && (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#665446' }}></div>
-            <span className="ml-3 text-lg" style={{ color: '#665446' }}>جاري تحميل الإحصائيات...</span>
+        {err && (
+          <div className="text-center text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+            {err}
           </div>
-        )}
-
-        {!loading && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard
-                title="إجمالي الطلاب"
-                value={stats.totalStudents}
-                icon={Users}
-                subtitle={`${stats.activeStudents} نشط`}
-              />
-              <StatCard
-                title="إجمالي المعلمين"
-                value={stats.totalTeachers}
-                icon={GraduationCap}
-                subtitle={`${stats.activeTeachers} نشط`}
-              />
-              <StatCard
-                title="إجمالي الكورسات"
-                value={stats.totalCourses}
-                icon={BookOpen}
-              />
-              <StatCard
-                title="إجمالي المستويات"
-                value={stats.totalLevels}
-                icon={BarChart3}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard
-                title="إجمالي الدروس"
-                value={stats.totalLessons}
-                icon={BookOpen}
-                subtitle={`${stats.openLessons} مفتوح، ${stats.closedLessons} مغلق`}
-              />
-              <StatCard
-                title="إجمالي المقالات"
-                value={stats.totalArticles}
-                icon={FileText}
-                subtitle={`${stats.openArticles} مفتوح`}
-              />
-              <StatCard
-                title="إجمالي الامتحانات"
-                value={stats.totalExams}
-                icon={Award}
-              />
-              <StatCard
-                title="إجمالي الإعجابات"
-                value={stats.totalLikes}
-                icon={Heart}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <StatCard
-                title="إجمالي التسجيلات"
-                value={stats.totalRegistrations}
-                icon={UserCheck}
-              />
-              <StatCard
-                title="الدروس المجتازة"
-                value={stats.passedLessons}
-                icon={TrendingUp}
-              />
-              <StatCard
-                title="الدروس غير المجتازة"
-                value={stats.failedLessons}
-                icon={Clock}
-              />
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-              <h2 className="text-2xl font-bold mb-6" style={{ color: '#665446' }}>
-                تحليل الأداء
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4" style={{ color: '#665446' }}>
-                    إحصائيات المستخدمين
-                  </h3>
-                  <ProgressBar
-                    label="الطلاب النشطون"
-                    current={stats.activeStudents}
-                    total={stats.totalStudents}
-                    color="#10B981"
-                  />
-                  <ProgressBar
-                    label="المعلمون النشطون"
-                    current={stats.activeTeachers}
-                    total={stats.totalTeachers}
-                    color="#3B82F6"
-                  />
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-4" style={{ color: '#665446' }}>
-                    إحصائيات المحتوى
-                  </h3>
-                  <ProgressBar
-                    label="الدروس المفتوحة"
-                    current={stats.openLessons}
-                    total={stats.totalLessons}
-                    color="#F59E0B"
-                  />
-                  <ProgressBar
-                    label="المقالات المفتوحة"
-                    current={stats.openArticles}
-                    total={stats.totalArticles}
-                    color="#EF4444"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold mb-6" style={{ color: '#665446' }}>
-                الأداء الأكاديمي
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4" style={{ color: '#665446' }}>
-                    نتائج الدروس
-                  </h3>
-                  <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg mb-4">
-                    <div>
-                      <p className="text-green-800 font-medium">الدروس المجتازة</p>
-                      <p className="text-2xl font-bold text-green-600">
-                        {stats.passedLessons.toLocaleString()}
-                      </p>
-                    </div>
-                    <TrendingUp className="h-8 w-8 text-green-600" />
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
-                    <div>
-                      <p className="text-red-800 font-medium">الدروس غير المجتازة</p>
-                      <p className="text-2xl font-bold text-red-600">
-                        {stats.failedLessons.toLocaleString()}
-                      </p>
-                    </div>
-                    <Clock className="h-8 w-8 text-red-600" />
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-4" style={{ color: '#665446' }}>
-                    معدل النجاح
-                  </h3>
-                  <div className="text-center">
-                    <div 
-                      className="inline-flex items-center justify-center w-32 h-32 rounded-full text-white text-3xl font-bold mb-4"
-                      style={{ backgroundColor: '#665446' }}
-                    >
-                      {stats.passedLessons + stats.failedLessons > 0 
-                        ? Math.round((stats.passedLessons / (stats.passedLessons + stats.failedLessons)) * 100)
-                        : 0
-                      }%
-                    </div>
-                    <p className="text-lg" style={{ color: '#665446' }}>
-                      معدل النجاح الإجمالي
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-center mt-8">
-              <p className="text-sm" style={{ color: '#665446' }}>
-                آخر تحديث: {new Date().toLocaleDateString('ar-EG')} - {new Date().toLocaleTimeString('ar-EG')}
-              </p>
-            </div>
-          </>
         )}
       </div>
     </div>
@@ -449,3 +489,83 @@ REACT_APP_SUPABASE_ANON_KEY=your-anon-key-here`}
 };
 
 export default DatabaseStatistics;
+
+/* ----------------- UI Helpers ----------------- */
+
+const StatCard = ({ title, value, icon: Icon, color = '#665446' }) => (
+  <div className="bg-white rounded-lg shadow-sm p-4 border" style={{ borderColor: '#F3E6D4' }}>
+    <div className="flex items-center justify-between">
+      <div>
+        <div className="text-xs" style={{ color: '#8B7355' }}>{title}</div>
+        <div className="text-2xl font-bold" style={{ color }}>
+          {Number(value).toLocaleString()}
+        </div>
+      </div>
+      {Icon && <Icon className="w-7 h-7" style={{ color }} />}
+    </div>
+  </div>
+);
+
+const Th = ({ children }) => (
+  <th className="text-right px-3 py-2 font-bold whitespace-nowrap" style={{ color: '#665446', borderBottom: '1px solid #F3E6D4' }}>
+    {children}
+  </th>
+);
+
+const Td = ({ children }) => (
+  <td className="px-3 py-2 align-top border-b" style={{ borderColor: '#F9F1E4', color: '#665446' }}>
+    {children}
+  </td>
+);
+
+const StrongNumber = ({ children }) => (
+  <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700">
+    {Number(children).toLocaleString()}
+  </span>
+);
+
+const Dash = () => <span className="text-gray-400">—</span>;
+
+/* ----------------- Hooks & Utils ----------------- */
+
+function useDebouncedValue(value, delay = 300) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
+}
+
+function downloadCSV(rows, filename = 'data.csv') {
+  if (!rows || rows.length === 0) return;
+  const cols = inferColumns(rows);
+  const header = cols.join(',');
+  const lines = rows.map((r) =>
+    cols.map((c) => csvEscape(r?.[c])).join(',')
+  );
+  const csv = [header, ...lines].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function inferColumns(rows) {
+  const set = new Set();
+  rows.forEach((r) => Object.keys(r || {}).forEach((k) => set.add(k)));
+  return Array.from(set);
+}
+
+function csvEscape(val) {
+  if (val === null || val === undefined) return '';
+  let s = typeof val === 'object' ? JSON.stringify(val) : String(val);
+  s = s.replace(/"/g, '""');
+  if (s.includes(',') || s.includes('\n') || s.includes('"')) {
+    s = `"${s}"`;
+  }
+  return s;
+}
