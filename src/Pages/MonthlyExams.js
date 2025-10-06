@@ -8,6 +8,13 @@ import {
   CheckCircle, XCircle, Users, TrendingUp, X,
   Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
+// داخل generateAllExamsCertificate()
+const [{ default: html2canvas }, jspdfMod, { default: QRCode }] = await Promise.all([
+  import('html2canvas'),
+  import('jspdf'),
+  import('qrcode')
+]);
+const { jsPDF } = jspdfMod;
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -23,6 +30,7 @@ const OPTION_TO_ENGLISH = { 'أ': 'A', 'ب': 'B', 'ج': 'C', 'د': 'D' };
 
 const MonthlyExams = () => {
   const navigate = useNavigate();
+  
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('');
   const [userName, setUserName] = useState('');
@@ -41,6 +49,8 @@ const MonthlyExams = () => {
   const [takingAnswers, setTakingAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
   const timerRef = useRef(null);
+  const [isCertGenerating, setIsCertGenerating] = useState(false);
+  const certRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
@@ -842,6 +852,83 @@ const submitExamManually = async () => {
       </div>
     );
   }
+// 1) محاولاتي المكتملة
+const getMyCompletedAttempts = () => {
+  return exams
+    .map(ex => {
+      const att = studentAttempts[ex.id];
+      if (att && att.status === 'submitted') return { exam: ex, att };
+      return null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(a.att.submitted_at || 0) - new Date(b.att.submitted_at || 0));
+};
+
+// 2) ظهور الزر بعد ساعتين
+const isCertificateAvailable = () => {
+  const rows = getMyCompletedAttempts();
+  if (rows.length === 0) return false;
+  return rows.some(r => canViewResult(r.att)); // يعتمد على RESULT_VISIBILITY_HOURS = 2
+};
+
+// 3) ملخص إجمالي
+const summarizeCompletedAttempts = (rows) => {
+  const totalMarks = rows.reduce((s, r) => s + Number(r.exam.total_marks || 0), 0);
+  const totalScore = rows.reduce((s, r) => s + Number(r.att.score || 0), 0);
+  const percentage = totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0;
+  return { totalMarks, totalScore, percentage: Number(percentage.toFixed(1)) };
+};
+
+// 4) توليد الشهادة
+const generateAllExamsCertificate = async () => {
+  try {
+    setIsCertGenerating(true);
+    const rows = getMyCompletedAttempts();
+    if (rows.length === 0) { toast.error('لا توجد امتحانات مكتملة لديك بعد.'); return; }
+    if (!rows.some(r => canViewResult(r.att))) { toast.info('الشهادة ستتاح بعد مرور ساعتين من تسليم أول امتحان.'); return; }
+
+    const sum = summarizeCompletedAttempts(rows);
+    const serial = `RL-ALL-${new Date().toISOString().slice(0,10)}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+    const verifyUrl = `https://yourdomain.com/cert/verify?serial=${encodeURIComponent(serial)}`;
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl);
+
+    const el = certRef.current; if (!el) throw new Error('لم يتم العثور على عنصر القالب');
+    el.querySelector('[data-field="platform"]').textContent = 'واحة العلم التعليمية';
+    el.querySelector('[data-field="student"]').textContent = userName || 'الطالب';
+    el.querySelector('[data-field="date"]').textContent = new Date().toISOString().slice(0,10);
+    el.querySelector('[data-field="serial"]').textContent = serial;
+    el.querySelector('[data-field="qr"]').src = qrDataUrl;
+    el.querySelector('[data-field="total"]').textContent = `${sum.totalScore} / ${sum.totalMarks} (${sum.percentage}%)`;
+
+    const tbody = el.querySelector('[data-field="rows"]');
+    tbody.innerHTML = rows.map(({ exam, att }, i) => {
+      const passPct = (exam.pass_marks / (exam.total_marks || 1)) * 100;
+      const isPass = (att.percentage || 0) >= passPct;
+      const submitted = att.submitted_at ? new Date(att.submitted_at).toLocaleString('ar-EG', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
+      return `
+        <tr>
+          <td style="padding:6px;border:1px solid #ddd;">${i + 1}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${exam.title || '-'}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${exam.subject || '-'}</td>
+          <td style="padding:6px;border:1px solid #ddd; text-align:center;">${att.score}/${exam.total_marks}</td>
+          <td style="padding:6px;border:1px solid #ddd; text-align:center;">${(att.percentage || 0).toFixed(1)}%</td>
+          <td style="padding:6px;border:1px solid #ddd; text-align:center;">${isPass ? 'ناجح' : 'راسب'}</td>
+          <td style="padding:6px;border:1px solid #ddd; text-align:center;">${submitted}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const canvas = await html2canvas(el, { scale: 2 });
+    const img = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const w = pdf.internal.pageSize.getWidth(); const h = pdf.internal.pageSize.getHeight();
+    pdf.addImage(img, 'PNG', 0, 0, w, h);
+    pdf.save(`certificate-${serial}.pdf`);
+    toast.success('تم تحميل الشهادة بنجاح.');
+  } catch (e) {
+    console.error(e); toast.error('تعذّر توليد الشهادة.');
+  } finally { setIsCertGenerating(false); }
+};
 
   return (
     <AnimatedBackground className="min-h-screen" dir="rtl">
@@ -979,26 +1066,45 @@ const submitExamManually = async () => {
 
 
         <div className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-2 font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                  الامتحانات الشهرية
-                </h1>
-                <p className="text-sm sm:text-base opacity-80 font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                  مرحباً {userName} ({userRole === 'admin' ? 'مشرف' : 'طالب'})
-                </p>
-              </div>
-              {userRole === 'admin' && (
-                <button
-                  onClick={() => openCreateForm()}
-                  className="flex items-center gap-2 px-6 py-3 bg-[#665446] hover:bg-[#8B7355] text-white rounded-lg font-bold font-[Almarai] transition-all shadow-lg hover:shadow-xl"
-                >
-                  <Plus className="w-5 h-5" />
-                  إنشاء امتحان جديد
-                </button>
-              )}
-            </div>
+  <div className="max-w-7xl mx-auto">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+      <div>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-2 font-[Almarai]" style={{ color: TEXT_COLOR }}>
+          الامتحانات الشهرية
+        </h1>
+        <p className="text-sm sm:text-base opacity-80 font-[Almarai]" style={{ color: TEXT_COLOR }}>
+          مرحباً {userName} ({userRole === 'admin' ? 'مشرف' : 'طالب'})
+        </p>
+      </div>
+
+      {/* ✅ زر تحميل الشهادة للطالب فقط */}
+      {userRole !== 'admin' && (
+        <button
+          onClick={generateAllExamsCertificate}
+          disabled={!isCertificateAvailable() || isCertGenerating}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold font-[Almarai] transition-all ${
+            (!isCertificateAvailable() || isCertGenerating)
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
+          }`}
+          title="تحميل الشهادة (تظهر بعد مرور ساعتين من أول امتحان مكتمل)"
+        >
+          تحميل الشهادة PDF
+        </button>
+      )}
+      {/* ⬆️ نهاية زر الطالب */}
+
+      {userRole === 'admin' && (
+        <button
+          onClick={() => openCreateForm()}
+          className="flex items-center gap-2 px-6 py-3 bg-[#665446] hover:bg-[#8B7355] text-white rounded-lg font-bold font-[Almarai] transition-all shadow-lg hover:shadow-xl"
+        >
+          <Plus className="w-5 h-5" />
+          إنشاء امتحان جديد
+        </button>
+      )}
+    </div>
+
 
             <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1140,7 +1246,7 @@ const submitExamManually = async () => {
                             </p>
                             {canView ? (
                               <p className="text-xs text-blue-600 font-[Almarai]">
-                                النتيجة: {studentAttempt.score}/{exam.total_marks} ({studentAttempt.percentage?.toFixed(1)}%)
+                                      حمل الشهادة لتعلم نتيجه الاختبار
                               </p>
                             ) : (
                               <p className="text-xs text-blue-600 font-[Almarai]">
@@ -1727,6 +1833,88 @@ const submitExamManually = async () => {
             </div>
           </div>
         )}
+
+        
+{/* ✅ قالب الشهادة المخفي للطباعة إلى PDF */}
+<div
+  className="fixed -left-[9999px] -top-[9999px] bg-white"
+  style={{ width: '794px', height: '1123px' }}
+  ref={certRef}
+  dir="rtl"
+>
+  <div
+    style={{
+      boxSizing: 'border-box',
+      width: '100%',
+      height: '100%',
+      padding: '26px',
+      border: '8px solid #333',
+      position: 'relative',
+      fontFamily: 'Almarai, Cairo, system-ui, sans-serif',
+      color: '#222'
+    }}
+  >
+    <div style={{ textAlign: 'center', marginTop: 2 }}>
+      <h1 style={{ margin: 0, fontSize: 28 }}>شهادة امتحانات الشهر</h1>
+      <div style={{ marginTop: 4 }}>
+        منصة: <span data-field="platform">—</span>
+      </div>
+    </div>
+
+    <div style={{ textAlign: 'center', margin: '10px 0 12px', lineHeight: 1.6 }}>
+      <div>تُمنح هذه الشهادة إلى</div>
+      <div style={{ fontSize: 24, fontWeight: 'bold' }} data-field="student">—</div>
+      <div style={{ fontSize: 14, color: '#444', marginTop: 4 }}>
+        تشمل الشهادة جميع الامتحانات التي قام الطالب بإتمامها على المنصة.
+      </div>
+      <div style={{ marginTop: 6, fontSize: 14 }}>
+        الإجمالي: <span data-field="total">—</span> — تاريخ الإصدار: <span data-field="date">—</span>
+      </div>
+    </div>
+
+    <div style={{ fontSize: 11, margin: '0 4px' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <thead>
+          <tr>
+            {['#','المستوي','المادة','الدرجة','النسبة','الحالة','تاريخ التسليم'].map((h) => (
+              <th
+                key={h}
+                style={{ padding: '6px', border: '1px solid #000', background: '#f2f2f2', textAlign: 'right' }}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody data-field="rows"></tbody>
+      </table>
+    </div>
+
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 26,
+        left: 26,
+        right: 26,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}
+    >
+      <div style={{ textAlign: 'center' }}>
+        <div>______________________</div>
+        <div>واحة العلم </div>
+      </div>
+      <img data-field="qr" alt="QR" style={{ width: 90, height: 90 }} />
+    </div>
+
+    <div style={{ position: 'absolute', bottom: 8, left: 26, fontSize: 11, color: '#666' }}>
+      رقم الشهادة: <span data-field="serial">—</span>
+    </div>
+  </div>
+</div>
+
+
       </div>
     </AnimatedBackground>
   );

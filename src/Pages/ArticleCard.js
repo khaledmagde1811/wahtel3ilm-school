@@ -67,12 +67,12 @@
 
         {/* محتوى المقال مع إمكانية التوسيع */}
         <div className="mb-4">
-            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-            {isExpanded || !shouldShowReadMore 
-                ? article.content 
-                : ${article.content.substring(0, PREVIEW_LENGTH)}...
-            }
-            </p>
+           <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+  {isExpanded || !shouldShowReadMore
+    ? article.content
+    : `${article.content.substring(0, PREVIEW_LENGTH)}...`}
+</p>
+
             
             {/* زر عرض المزيد/عرض أقل */}
             {shouldShowReadMore && (
@@ -106,7 +106,7 @@
                     : 'bg-gray-100 text-gray-600 hover:bg-red-50'
                 }`}
             >
-                <Heart className={h-4 w-4 ${article.user_liked ? 'fill-current' : ''}} />
+<Heart className={`h-4 w-4 ${article.user_liked ? 'fill-current' : ''}`} />
                 <span>{article.likes_count}</span>
             </button>
             

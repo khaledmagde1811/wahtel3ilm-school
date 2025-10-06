@@ -1,5 +1,12 @@
 // contexts/NotificationContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import { supabase } from '../Utilities/supabaseClient';
 
 const NotificationContext = createContext();
@@ -39,6 +46,11 @@ export const NotificationProvider = ({ children }) => {
     LAST_COMMUNITY_VISIT: 'last_community_visit',
     LAST_EXAMS_VISIT: 'last_exams_visit',
   };
+
+  // Refs لمنع السبام والتحديث المتكرر
+  const lastExamsWriteRef = useRef('');
+  const lastArticlesWriteRef = useRef('');
+  const lastCommunityWriteRef = useRef('');
 
   // التحقق من المستخدم الحالي
   useEffect(() => {
@@ -245,6 +257,7 @@ export const NotificationProvider = ({ children }) => {
         const base = supabase
           .from('exam_attempts')
           .select('*', { count: 'exact', head: true })
+          // الطالب ممكن يبقى محفوظ بـ auth_id أو students.id في عمود student_id حسب تنفيذك
           .or(`student_id.eq.${meAuthId},student_id.eq.${meStudentId}`);
 
         if (lastExamsVisit) base.gt('updated_at', lastExamsVisit);
@@ -355,7 +368,7 @@ export const NotificationProvider = ({ children }) => {
 
     const attemptStudent = next.student_id ? next.student_id.toString() : null;
     const meAuthId = currentUser?.id ? currentUser.id.toString() : null;
-    const meStudentId = currentUserId ? currentUserId.toString() : null;
+       const meStudentId = currentUserId ? currentUserId.toString() : null;
     const isMine = attemptStudent === meAuthId || attemptStudent === meStudentId;
 
     if (isMine && (next.status === 'submitted' || typeof next.score !== 'undefined' || typeof next.percentage !== 'undefined')) {
@@ -369,48 +382,111 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  // -------- Helpers لمنع السبان في "آخر زيارة" --------
+  const nearlySameTime = (a, b, toleranceMs = 1000) => {
+    if (!a || !b) return false;
+    return Math.abs(new Date(a) - new Date(b)) < toleranceMs;
+  };
+
   // -------- أدوات التعامل مع "آخر زيارة" + إعادة ضبط --------
-  const markArticlesAsVisited = () => {
+  const markArticlesAsVisited = useCallback(() => {
     if (!currentUser) return;
     const now = new Date().toISOString();
     const key = `${STORAGE_KEYS.LAST_ARTICLES_VISIT}_${currentUserId || currentUser.id}`;
-    localStorage.setItem(key, now);
-    setNotifications((prev) => ({
-      ...prev,
-      newArticles: 0,
-      lastVisited: { ...prev.lastVisited, articles: now }
-    }));
-    console.log('تم تحديث آخر زيارة للمقالات:', now);
-  };
 
-  const markCommunityAsVisited = () => {
+    // تبريد 3 ثواني
+    if (lastArticlesWriteRef.current) {
+      const diffMs = new Date(now) - new Date(lastArticlesWriteRef.current);
+      if (diffMs < 3000) return;
+    }
+
+    const prevInState = notifications?.lastVisited?.articles || null;
+    const prevInLS = localStorage.getItem(key);
+
+    if (nearlySameTime(now, prevInState) || nearlySameTime(now, prevInLS)) {
+      lastArticlesWriteRef.current = now;
+      return;
+    }
+
+    localStorage.setItem(key, now);
+    lastArticlesWriteRef.current = now;
+    setNotifications((prev) => {
+      if (prev?.lastVisited?.articles && nearlySameTime(now, prev.lastVisited.articles)) return prev;
+      return {
+        ...prev,
+        newArticles: 0,
+        lastVisited: { ...prev.lastVisited, articles: now }
+      };
+    });
+    console.log('تم تحديث آخر زيارة للمقالات:', now);
+  }, [currentUser, currentUserId, notifications?.lastVisited?.articles]);
+
+  const markCommunityAsVisited = useCallback(() => {
     if (!currentUser) return;
     const now = new Date().toISOString();
     const key = `${STORAGE_KEYS.LAST_COMMUNITY_VISIT}_${currentUserId || currentUser.id}`;
+
+    // تبريد 3 ثواني
+    if (lastCommunityWriteRef.current) {
+      const diffMs = new Date(now) - new Date(lastCommunityWriteRef.current);
+      if (diffMs < 3000) return;
+    }
+
+    const prevInState = notifications?.lastVisited?.community || null;
+    const prevInLS = localStorage.getItem(key);
+
+    if (nearlySameTime(now, prevInState) || nearlySameTime(now, prevInLS)) {
+      lastCommunityWriteRef.current = now;
+      return;
+    }
+
     localStorage.setItem(key, now);
-    setNotifications((prev) => ({
-      ...prev,
-      newPosts: 0,
-      lastVisited: { ...prev.lastVisited, community: now }
-    }));
+    lastCommunityWriteRef.current = now;
+    setNotifications((prev) => {
+      if (prev?.lastVisited?.community && nearlySameTime(now, prev.lastVisited.community)) return prev;
+      return {
+        ...prev,
+        newPosts: 0,
+        lastVisited: { ...prev.lastVisited, community: now }
+      };
+    });
     console.log('تم تحديث آخر زيارة للمجتمع:', now);
-  };
+  }, [currentUser, currentUserId, notifications?.lastVisited?.community]);
 
-  // جديد: آخر زيارة للامتحانات
- const markExamsAsVisited = () => {
-  if (!currentUser) return;
-  const now = new Date().toISOString();
-  const key = `${STORAGE_KEYS.LAST_EXAMS_VISIT}_${currentUserId || currentUser.id}`;
-  localStorage.setItem(key, now);
-  setNotifications((prev) => ({
-    ...prev,
-    newExams: 0,          // تصفير عدد الامتحانات الجديدة
-    myResultsReady: 0,    // تصفير عدد النتائج الجاهزة
-    lastVisited: { ...prev.lastVisited, exams: now }
-  }));
-  console.log('تم تحديث آخر زيارة للامتحانات:', now);
-};
+  // جديد: آخر زيارة للامتحانات (Idempotent + Cooldown)
+  const markExamsAsVisited = useCallback(() => {
+    if (!currentUser) return;
+    const key = `${STORAGE_KEYS.LAST_EXAMS_VISIT}_${currentUserId || currentUser.id}`;
+    const now = new Date().toISOString();
 
+    // تبريد 3 ثواني لمنع السبان
+    if (lastExamsWriteRef.current) {
+      const diffMs = new Date(now) - new Date(lastExamsWriteRef.current);
+      if (diffMs < 3000) return;
+    }
+
+    // لو القيمة الحالية في state أو localStorage قريبة جدًا (±1 ثانية) متحدّثش
+    const prevInState = notifications?.lastVisited?.exams || null;
+    const prevInLS = localStorage.getItem(key);
+    if (nearlySameTime(now, prevInState) || nearlySameTime(now, prevInLS)) {
+      lastExamsWriteRef.current = now;
+      return;
+    }
+
+    // اكتب مرة واحدة
+    localStorage.setItem(key, now);
+    lastExamsWriteRef.current = now;
+    setNotifications((prev) => {
+      if (prev?.lastVisited?.exams && nearlySameTime(now, prev.lastVisited.exams)) return prev;
+      return {
+        ...prev,
+        newExams: 0,
+        myResultsReady: 0,
+        lastVisited: { ...prev.lastVisited, exams: now },
+      };
+    });
+    console.log('تم تحديث آخر زيارة للامتحانات:', now);
+  }, [currentUser, currentUserId, notifications?.lastVisited?.exams]);
 
   // إعادة تعيين كل الإشعارات + إزالة آخر زيارات
   const resetNotifications = () => {
