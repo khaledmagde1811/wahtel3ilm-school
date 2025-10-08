@@ -947,120 +947,182 @@ const generateAllExamsCertificate = async () => {
 {takingExam && (
   <div className="flex-1 overflow-auto">
     <div className="max-w-7xl mx-auto">
-  <section className="w-full max-w-5xl mx-auto my-4 sm:my-8" dir="rtl">
-    {/* Header */}
-    <header className="sticky top-0 z-10 rounded-2xl bg-gradient-to-r from-[#665446] to-[#8B7355] text-white shadow-xl overflow-hidden">
-      <div className="px-4 sm:px-6 py-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-xl sm:text-2xl font-bold font-[Almarai] truncate">
-            {takingExam.title}
-          </h2>
-          <p className="text-xs sm:text-sm opacity-90 font-[Almarai]">
-            السؤال {answeredCount} من {totalQuestions}
-          </p>
-        </div>
-
-        <div className="bg-white/15 rounded-xl px-3 sm:px-4 py-2 text-center shrink-0">
-          <Clock className="w-5 h-5 mx-auto mb-1" />
-          <p className="text-lg sm:text-xl font-bold font-mono">
-            {formatTime(timeLeft)}
-          </p>
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="w-full h-2 bg-white/20">
-        <div
-          className="h-2 bg-white transition-all duration-300"
-          style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
-        />
-      </div>
-    </header>
-
-    {/* Body */}
-    <div className="mt-4 sm:mt-6 space-y-6">
-      {(takingExam.questions || []).map((q, idx) => (
-        <article
-          key={q.id}
-          className="rounded-2xl border-2 border-gray-200 hover:border-[#665446] bg-white p-4 sm:p-5 transition"
-        >
-          <div className="flex items-start gap-3 mb-3">
-            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#665446] text-white flex items-center justify-center font-bold">
-              {idx + 1}
-            </span>
-            <div className="flex-1">
-              <p className="text-base sm:text-lg font-semibold text-gray-800 font-[Almarai] mb-1">
-                {q.question_text}
+      <section className="w-full max-w-5xl mx-auto my-4 sm:my-8" dir="rtl">
+        {/* Header */}
+        <header className="sticky top-0 z-10 rounded-2xl bg-gradient-to-r from-[#665446] to-[#8B7355] text-white shadow-xl overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold font-[Almarai] truncate">
+                {takingExam.title}
+              </h2>
+              <p className="text-xs sm:text-sm opacity-90 font-[Almarai]">
+                السؤال {answeredCount} من {totalQuestions}
               </p>
-              <span className="text-xs sm:text-sm text-gray-500 font-[Almarai]">
-                ({q.marks} {q.marks === 1 ? 'درجة' : 'درجات'})
-              </span>
+            </div>
+
+            <div className="bg-white/15 rounded-xl px-3 sm:px-4 py-2 text-center shrink-0">
+              <Clock className="w-5 h-5 mx-auto mb-1" />
+              <p className="text-lg sm:text-xl font-bold font-mono">
+                {formatTime(timeLeft)}
+              </p>
             </div>
           </div>
 
-          <div className="space-y-3 sm:mr-10">
-            {ENGLISH_OPTIONS.map((opt) => (
-              <label
-                key={opt}
-                className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${
-                  takingAnswers[q.id] === opt
-                    ? 'border-[#665446] bg-[#665446]/10'
-                    : 'border-gray-300 hover:border-[#665446] hover:bg-gray-50'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name={`question-${q.id}`}
-                  value={opt}
-                  checked={takingAnswers[q.id] === opt}
-                  onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
-                  className="w-5 h-5 accent-[#665446]"
-                />
-                <span className="flex items-center gap-2 font-[Almarai]">
-                  <span className="font-bold text-[#665446]">
-                    {OPTION_DISPLAY[opt]}.
-                  </span>
-                  <span className="text-gray-700">
-                    {q[`option_${opt.toLowerCase()}`]}
-                  </span>
-                </span>
-              </label>
-            ))}
+          {/* Progress */}
+          <div className="w-full h-2 bg-white/20">
+            <div
+              className="h-full bg-white transition-all duration-300"
+              style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
+            />
           </div>
-        </article>
-      ))}
-    </div>
+        </header>
 
-    {/* Footer */}
-    <footer className="sticky bottom-4 mt-6">
-      <div className="bg-white/90 backdrop-blur rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row gap-2">
-        <button
-          onClick={() => {
-            if (window.confirm('هل أنت متأكد من إلغاء الامتحان؟ سيتم فقدان جميع الإجابات.')) {
-              if (timerRef.current) clearInterval(timerRef.current);
-              setTakingExam(null);
-              setTakingAnswers({});
-            }
-          }}
-          className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold font-[Almarai] transition"
-        >
-          إلغاء
-        </button>
-        <button
-          onClick={submitExamManually}
-          disabled={answeredCount === 0}
-          className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold font-[Almarai] transition ${
-            answeredCount === 0
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-md hover:shadow-lg'
-          }`}
-        >
-          تسليم الامتحان ({answeredCount}/{totalQuestions})
-        </button>
-      </div>
-    </footer>
-  </section>
-  </div>
+        {/* Body */}
+        <div className="mt-4 sm:mt-6 space-y-6">
+          {(takingExam.questions || []).map((q, idx) => {
+            const questionType = q.question_type || 'multiple_choice';
+            const isTrueFalse = questionType === 'true_false';
+
+            return (
+              <article
+                key={q.id}
+                className="rounded-2xl border-2 border-gray-200 hover:border-[#665446] bg-white p-4 sm:p-5 transition"
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#665446] text-white flex items-center justify-center font-bold text-sm">
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1">
+                    <div className="flex items-start gap-2 mb-1">
+                      <p className="text-base sm:text-lg font-semibold text-gray-800 font-[Almarai] flex-1">
+                        {q.question_text}
+                      </p>
+                      <span className={`text-xs px-2 py-1 rounded-lg font-[Almarai] ${
+                        isTrueFalse 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-purple-100 text-purple-700'
+                      }`}>
+                        {isTrueFalse ? 'صح/خطأ' : 'اختيار متعدد'}
+                      </span>
+                    </div>
+                    <span className="text-xs sm:text-sm text-gray-500 font-[Almarai]">
+                      ({q.marks} {q.marks === 1 ? 'درجة' : 'درجات'})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3 sm:mr-10">
+                  {isTrueFalse ? (
+                    // True/False Options
+                    <>
+                      <label
+                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${
+                          takingAnswers[q.id] === 'TRUE'
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-300 hover:border-green-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`question-${q.id}`}
+                          value="TRUE"
+                          checked={takingAnswers[q.id] === 'TRUE'}
+                          onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
+                          className="w-5 h-5 accent-green-600"
+                        />
+                        <span className="flex items-center gap-2 font-[Almarai]">
+                          <span className="text-2xl">✓</span>
+                          <span className="font-bold text-green-700 text-lg">صح</span>
+                        </span>
+                      </label>
+
+                      <label
+                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${
+                          takingAnswers[q.id] === 'FALSE'
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-300 hover:border-red-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`question-${q.id}`}
+                          value="FALSE"
+                          checked={takingAnswers[q.id] === 'FALSE'}
+                          onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
+                          className="w-5 h-5 accent-red-600"
+                        />
+                        <span className="flex items-center gap-2 font-[Almarai]">
+                          <span className="text-2xl">✗</span>
+                          <span className="font-bold text-red-700 text-lg">خطأ</span>
+                        </span>
+                      </label>
+                    </>
+                  ) : (
+                    // Multiple Choice Options
+                    ENGLISH_OPTIONS.map((opt) => (
+                      <label
+                        key={opt}
+                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${
+                          takingAnswers[q.id] === opt
+                            ? 'border-[#665446] bg-[#665446]/10'
+                            : 'border-gray-300 hover:border-[#665446] hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`question-${q.id}`}
+                          value={opt}
+                          checked={takingAnswers[q.id] === opt}
+                          onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
+                          className="w-5 h-5 accent-[#665446]"
+                        />
+                        <span className="flex items-center gap-2 font-[Almarai]">
+                          <span className="font-bold text-[#665446]">
+                            {OPTION_DISPLAY[opt]}.
+                          </span>
+                          <span className="text-gray-700">
+                            {q[`option_${opt.toLowerCase()}`]}
+                          </span>
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <footer className="sticky bottom-4 mt-6">
+          <div className="bg-white/90 backdrop-blur rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() => {
+                if (window.confirm('هل أنت متأكد من إلغاء الامتحان؟ سيتم فقدان جميع الإجابات.')) {
+                  if (timerRef.current) clearInterval(timerRef.current);
+                  setTakingExam(null);
+                  setTakingAnswers({});
+                }
+              }}
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold font-[Almarai] transition"
+            >
+              إلغاء
+            </button>
+            <button
+              onClick={submitExamManually}
+              disabled={answeredCount === 0}
+              className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold font-[Almarai] transition ${
+                answeredCount === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-md hover:shadow-lg'
+              }`}
+            >
+              تسليم الامتحان ({answeredCount}/{totalQuestions})
+            </button>
+          </div>
+        </footer>
+      </section>
+    </div>
   </div>
 )}
 
@@ -1324,12 +1386,11 @@ const generateAllExamsCertificate = async () => {
           </div>
         </div>
 
-       {/* ✅ استبدل كتلة المودال القديمة الخاصة بإنشاء/تعديل الامتحان بهذه اللوحة الداخلية (Inline) */}
-{/* ✅ استبدل كتلة showCreateForm الحالية بالكامل بهذا الكود (Inline, مودرن، ومتجاوب) */}
+{/* ✅ نموذج محدث يدعم أسئلة الاختيار من متعدد وأسئلة صح/خطأ */}
 {showCreateForm && (
   <section className="max-w-7xl mx-auto mb-8 px-2 sm:px-4" ref={formRef} dir="rtl">
     <div className="relative rounded-2xl shadow-xl border border-[#E6D9C8] overflow-hidden bg-white/80 backdrop-blur">
-      {/* Header (Sticky داخل البانِل لسهولة الوصول على الشاشات الصغيرة) */}
+      {/* Header */}
       <header className="sticky top-0 z-10 bg-gradient-to-r from-[#665446] to-[#8B7355] text-white">
         <div className="flex items-center justify-between px-4 sm:px-6 py-4">
           <div className="min-w-0">
@@ -1520,24 +1581,30 @@ const generateAllExamsCertificate = async () => {
           </div>
         </div>
 
-        {/* Questions List (متجاوب + قابل للطي عبر <details>) */}
+        {/* Questions List */}
         <div className="mt-4 space-y-4">
           {questions.map((q, index) => (
             <details key={index} open className="group rounded-2xl border-2 border-gray-200/80 bg-white">
               <summary className="flex items-center justify-between gap-3 cursor-pointer rounded-2xl px-4 sm:px-5 py-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#665446] text-white font-bold">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#665446] text-white font-bold text-sm">
                     {index + 1}
                   </span>
-                  <span className="truncate font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                  <span className="truncate font-[Almarai] text-sm" style={{ color: TEXT_COLOR }}>
                     {q.question_text?.trim() ? q.question_text : 'سؤال جديد'}
+                  </span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg font-[Almarai]">
+                    {q.question_type === 'true_false' ? 'صح/خطأ' : 'اختيار متعدد'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {questions.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeQuestion(index)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeQuestion(index);
+                      }}
                       className="rounded-lg bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100 transition"
                       title="حذف السؤال"
                     >
@@ -1552,6 +1619,22 @@ const generateAllExamsCertificate = async () => {
 
               <div className="px-4 sm:px-5 pb-5 pt-1">
                 <div className="space-y-4">
+                  {/* Question Type Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      نوع السؤال *
+                    </label>
+                    <select
+                      value={q.question_type || 'multiple_choice'}
+                      onChange={(e) => updateQuestion(index, 'question_type', e.target.value)}
+                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    >
+                      <option value="multiple_choice">اختيار من متعدد</option>
+                      <option value="true_false">صح أو خطأ</option>
+                    </select>
+                  </div>
+
+                  {/* Question Text */}
                   <div className="space-y-2">
                     <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
                       نص السؤال *
@@ -1565,84 +1648,120 @@ const generateAllExamsCertificate = async () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                        الخيار أ *
-                      </label>
-                      <input
-                        type="text"
-                        value={q.option_a}
-                        onChange={(e) => updateQuestion(index, 'option_a', e.target.value)}
-                        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                        الخيار ب *
-                      </label>
-                      <input
-                        type="text"
-                        value={q.option_b}
-                        onChange={(e) => updateQuestion(index, 'option_b', e.target.value)}
-                        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                        الخيار ج *
-                      </label>
-                      <input
-                        type="text"
-                        value={q.option_c}
-                        onChange={(e) => updateQuestion(index, 'option_c', e.target.value)}
-                        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                        الخيار د *
-                      </label>
-                      <input
-                        type="text"
-                        value={q.option_d}
-                        onChange={(e) => updateQuestion(index, 'option_d', e.target.value)}
-                        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                      />
-                    </div>
-                  </div>
+                  {/* Options - Show based on question type */}
+                  {q.question_type === 'true_false' ? (
+                    // True/False Options
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                          الإجابة الصحيحة *
+                        </label>
+                        <select
+                          value={q.correct_answer}
+                          onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
+                          className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                        >
+                          <option value="TRUE">✓ صح</option>
+                          <option value="FALSE">✗ خطأ</option>
+                        </select>
+                      </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                        الإجابة الصحيحة *
-                      </label>
-                      <select
-                        value={q.correct_answer}
-                        onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
-                        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                      >
-                        {ENGLISH_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {OPTION_DISPLAY[opt]}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                          الدرجات
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={q.marks}
+                          onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
+                          className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                        />
+                      </div>
                     </div>
+                  ) : (
+                    // Multiple Choice Options
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                            الخيار أ *
+                          </label>
+                          <input
+                            type="text"
+                            value={q.option_a}
+                            onChange={(e) => updateQuestion(index, 'option_a', e.target.value)}
+                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                            الخيار ب *
+                          </label>
+                          <input
+                            type="text"
+                            value={q.option_b}
+                            onChange={(e) => updateQuestion(index, 'option_b', e.target.value)}
+                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                            الخيار ج *
+                          </label>
+                          <input
+                            type="text"
+                            value={q.option_c}
+                            onChange={(e) => updateQuestion(index, 'option_c', e.target.value)}
+                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                            الخيار د *
+                          </label>
+                          <input
+                            type="text"
+                            value={q.option_d}
+                            onChange={(e) => updateQuestion(index, 'option_d', e.target.value)}
+                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                          />
+                        </div>
+                      </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                        الدرجات
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={q.marks}
-                        onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
-                        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                      />
-                    </div>
-                  </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                            الإجابة الصحيحة *
+                          </label>
+                          <select
+                            value={q.correct_answer}
+                            onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
+                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                          >
+                            {ENGLISH_OPTIONS.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {OPTION_DISPLAY[opt]}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                            الدرجات
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={q.marks}
+                            onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
+                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </details>
@@ -1650,7 +1769,7 @@ const generateAllExamsCertificate = async () => {
         </div>
       </div>
 
-      {/* Footer (Sticky أسفل للهواتف) */}
+      {/* Footer */}
       <footer className="sticky bottom-0 inset-x-0 bg-white border-t border-gray-200/80 p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
