@@ -23,6 +23,7 @@ import DatabaseStatistics from "./Pages/AdminPagde/DatabaseStatistics";
 import ArticlesManagement from "./Pages/createArticle ";
 import Community from "./Pages/Community";
 import MonthlyExams from "./Pages/MonthlyExams";
+import UpdatePassword from "./Pages/UpdatePassword";
 
 const Spinner = () => (
   <div className="fixed inset-0 bg-[#FFF9EF] flex items-center justify-center z-50">
@@ -101,6 +102,7 @@ function App() {
             <Route path="/articlesManagement" element={<ArticlesManagement />} />
             <Route path="/community" element={<Community />} />
             <Route path="/monthlyExams" element={<MonthlyExams/>} />
+            <Route path="/update-password" element={<UpdatePassword />} />
           </Routes>
         </div>
         <Footer />

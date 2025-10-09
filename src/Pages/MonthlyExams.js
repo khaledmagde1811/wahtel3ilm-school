@@ -118,17 +118,18 @@ const MonthlyExams = () => {
     setQuestions(prev => {
       const copy = [...prev];
       if (n > copy.length) {
-        for (let i = copy.length; i < n; i++) {
-          copy.push({
-            question_text: '',
-            option_a: '',
-            option_b: '',
-            option_c: '',
-            option_d: '',
-            correct_answer: 'A',
-            marks: 1
-          });
-        }
+for (let i = copy.length; i < n; i++) {
+  copy.push({
+    question_text: '',
+    question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
+    option_a: '',
+    option_b: '',
+    option_c: '',
+    option_d: '',
+    correct_answer: 'A',
+    marks: 1
+  });
+}
       } else if (n < copy.length) {
         copy.length = n;
       }
@@ -310,97 +311,131 @@ const MonthlyExams = () => {
   };
 
   const createExam = async () => {
-    if (!examForm.title || !examForm.month || !examForm.subject) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
-      return;
-    }
+  // التحقق من الحقول
+  if (!examForm.title || !examForm.month || !examForm.subject) {
+    toast.error('يرجى ملء جميع الحقول المطلوبة');
+    return;
+  }
 
-    if (questions.length === 0 || !questions[0].question_text) {
-      toast.error('يجب إضافة سؤال واحد على الأقل');
-      return;
-    }
+  if (!examForm.start_date || !examForm.end_date) {
+    toast.error('يرجى تحديد تاريخ البدء والانتهاء');
+    return;
+  }
 
-    try {
-      const payloadExam = {
-        title: examForm.title,
-        description: examForm.description || null,
-        month: examForm.month,
-        subject: examForm.subject,
-        duration_minutes: Number(examForm.duration_minutes) || DEFAULT_DURATION_MIN,
-        total_marks: Number(examForm.total_marks) || 100,
-        pass_marks: Number(examForm.pass_marks) || 50,
-        start_date: inputToIso(examForm.start_date),
-        end_date: inputToIso(examForm.end_date),
-        is_active: examForm.is_active ?? true
-      };
+  if (questions.length === 0 || !questions[0].question_text) {
+    toast.error('يجب إضافة سؤال واحد على الأقل');
+    return;
+  }
 
-      if (editingExam) {
-        const { error } = await supabase
-          .from('monthly_exams')
-          .update(payloadExam)
-          .eq('id', editingExam.id);
+  try {
+    const payloadExam = {
+      title: examForm.title,
+      description: examForm.description || null,
+      month: examForm.month,
+      subject: examForm.subject,
+      duration_minutes: Number(examForm.duration_minutes) || DEFAULT_DURATION_MIN,
+      total_marks: Number(examForm.total_marks) || 100,
+      pass_marks: Number(examForm.pass_marks) || 50,
+      start_date: examForm.start_date ? new Date(examForm.start_date).toISOString() : new Date().toISOString(),
+      end_date: examForm.end_date ? new Date(examForm.end_date).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      is_active: examForm.is_active ?? true
+    };
 
-        if (error) throw error;
+    if (editingExam) {
+      // ========== تعديل امتحان موجود ==========
+      const { error } = await supabase
+        .from('monthly_exams')
+        .update(payloadExam)
+        .eq('id', editingExam.id);
 
-        await supabase.from('exam_questions').delete().eq('exam_id', editingExam.id);
+      if (error) throw error;
 
-        const questionsToInsert = questions.map((q, index) => ({
-          exam_id: editingExam.id,
-          question_text: q.question_text,
-          option_a: q.option_a,
-          option_b: q.option_b,
-          option_c: q.option_c,
-          option_d: q.option_d,
-          correct_answer: q.correct_answer,
-          marks: Number(q.marks || 1),
-          question_order: index + 1
-        }));
+      // حذف الأسئلة القديمة
+      await supabase.from('exam_questions').delete().eq('exam_id', editingExam.id);
 
-        if (questionsToInsert.length) {
-          const { error: qErr } = await supabase.from('exam_questions').insert(questionsToInsert);
-          if (qErr) throw qErr;
-        }
+      // إضافة الأسئلة الجديدة
+      const questionsToInsert = questions.map((q, index) => ({
+        exam_id: editingExam.id,
+        question_text: q.question_text,
+        question_type: q.question_type || 'multiple_choice',
+        option_a: q.option_a || null,
+        option_b: q.option_b || null,
+        option_c: q.option_c || null,
+        option_d: q.option_d || null,
+        correct_answer: q.correct_answer,
+        marks: Number(q.marks || 1),
+        question_order: index + 1
+      }));
 
-        toast.success('تم تحديث الامتحان بنجاح!');
-      } else {
-        const { data: examData, error: examError } = await supabase
-          .from('monthly_exams')
-          .insert([{ ...payloadExam, created_by: currentUser.id }])
-          .select()
-          .single();
-
-        if (examError) throw examError;
-
-        const questionsToInsert = questions.map((q, index) => ({
-          exam_id: examData.id,
-          question_text: q.question_text,
-          option_a: q.option_a,
-          option_b: q.option_b,
-          option_c: q.option_c,
-          option_d: q.option_d,
-          correct_answer: q.correct_answer,
-          marks: Number(q.marks || 1),
-          question_order: index + 1
-        }));
-
-        const { error: questionsError } = await supabase
-          .from('exam_questions')
-          .insert(questionsToInsert);
-
-        if (questionsError) throw questionsError;
-
-        toast.success('تم إنشاء الامتحان بنجاح!');
+      if (questionsToInsert.length) {
+        const { error: qErr } = await supabase.from('exam_questions').insert(questionsToInsert);
+        if (qErr) throw qErr;
       }
 
-      setShowCreateForm(false);
-      resetForm();
-      setEditingExam(null);
-      fetchExams();
-    } catch (error) {
-      console.error('خطأ في إنشاء/تحديث الامتحان:', error);
-      toast.error('حدث خطأ أثناء إنشاء/تحديث الامتحان');
+      toast.success('تم تحديث الامتحان بنجاح!');
+      
+    } else {
+      // ========== إنشاء امتحان جديد ==========
+      
+      // ✅ إنشاء الامتحان بدون .single()
+      const { data: examDataArray, error: examError } = await supabase
+        .from('monthly_exams')
+        .insert([{ ...payloadExam, created_by: currentUser.id }])
+        .select();
+
+      if (examError) {
+        console.error('❌ خطأ في إنشاء الامتحان:', examError);
+        throw examError;
+      }
+
+      // ✅ التحقق من البيانات
+      if (!examDataArray || examDataArray.length === 0) {
+        console.error('❌ لم يتم إرجاع بيانات الامتحان');
+        toast.error('فشل إنشاء الامتحان - تحقق من الصلاحيات في Supabase');
+        return;
+      }
+
+      const examData = examDataArray[0];
+      console.log('✅ تم إنشاء الامتحان - ID:', examData.id);
+
+      // ✅ إنشاء الأسئلة
+      const questionsToInsert = questions.map((q, index) => ({
+        exam_id: examData.id,
+        question_text: q.question_text,
+        question_type: q.question_type || 'multiple_choice',
+        option_a: q.option_a || null,
+        option_b: q.option_b || null,
+        option_c: q.option_c || null,
+        option_d: q.option_d || null,
+        correct_answer: q.correct_answer,
+        marks: Number(q.marks || 1),
+        question_order: index + 1
+      }));
+
+      const { error: questionsError } = await supabase
+        .from('exam_questions')
+        .insert(questionsToInsert);
+
+      if (questionsError) {
+        console.error('❌ خطأ في إضافة الأسئلة:', questionsError);
+        throw questionsError;
+      }
+
+      console.log('✅ تم إضافة الأسئلة بنجاح');
+      toast.success('تم إنشاء الامتحان بنجاح!');
     }
-  };
+
+    // تنظيف النموذج
+    setShowCreateForm(false);
+    resetForm();
+    setEditingExam(null);
+    fetchExams();
+    
+  } catch (error) {
+    console.error('خطأ في إنشاء/تحديث الامتحان:', error);
+    toast.error('حدث خطأ: ' + (error.message || 'حاول مرة أخرى'));
+  }
+};
 
   const deleteExam = async (examId) => {
     const userConfirmed = window.confirm('هل أنت متأكد من حذف هذا الامتحان؟');
@@ -520,55 +555,57 @@ const MonthlyExams = () => {
     }
   };
 
-  const autoSubmitExam = async (attempt, qs) => {
-    try {
-      const answerRows = (qs || []).map(q => ({
-        attempt_id: attempt.id,
-        question_id: q.id,
-        selected_answer: takingAnswers[q.id] || null
-      }));
+ const autoSubmitExam = async (attempt, qs) => {
+  try {
+    // ✅ تحضير الإجابات كما هي (بدون تحويل)
+    const answerRows = (qs || []).map(q => ({
+      attempt_id: attempt.id,
+      question_id: q.id,
+      selected_answer: takingAnswers[q.id] || null
+    }));
 
-      if (answerRows.length) {
-        const { error: insertErr } = await supabase
-          .from('exam_answers')
-          .insert(answerRows);
-        
-        if (insertErr) throw insertErr;
-      }
-
-      let score = 0;
-      qs.forEach(q => {
-        const studentAnswer = takingAnswers[q.id];
-        if (studentAnswer && studentAnswer === q.correct_answer) {
-          score += Number(q.marks || 1);
-        }
-      });
-
-      const percentage = (score / attempt.total_marks) * 100;
-
-      const { error: updateErr } = await supabase
-        .from('exam_attempts')
-        .update({
-          status: 'submitted',
-          submitted_at: new Date().toISOString(),
-          score: score,
-          percentage: percentage
-        })
-        .eq('id', attempt.id);
-
-      if (updateErr) throw updateErr;
-
-      setTakingExam(null);
-      setTakingAnswers({});
-      fetchExams();
-      toast.info('انتهى الوقت — تم تسليم الامتحان تلقائياً');
-    } catch (err) {
-      console.error('خطأ في التسليم التلقائي:', err);
-      toast.error('فشل التسليم التلقائي');
+    if (answerRows.length) {
+      const { error: insertErr } = await supabase
+        .from('exam_answers')
+        .insert(answerRows);
+      
+      if (insertErr) throw insertErr;
     }
-  };
 
- // ✅ بدّل دالة submitExamManually بالكامل بهذا الإصدار
+    // ✅ حساب الدرجة
+    let score = 0;
+    qs.forEach(q => {
+      const studentAnswer = (takingAnswers[q.id] || '').toString().toUpperCase();
+      const correctAnswer = (q.correct_answer || '').toString().toUpperCase();
+      
+      if (studentAnswer && studentAnswer === correctAnswer) {
+        score += Number(q.marks || 1);
+      }
+    });
+
+    const percentage = (score / attempt.total_marks) * 100;
+
+    const { error: updateErr } = await supabase
+      .from('exam_attempts')
+      .update({
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        score: score,
+        percentage: percentage
+      })
+      .eq('id', attempt.id);
+
+    if (updateErr) throw updateErr;
+
+    setTakingExam(null);
+    setTakingAnswers({});
+    fetchExams();
+    toast.info('انتهى الوقت — تم تسليم الامتحان تلقائياً');
+  } catch (err) {
+    console.error('خطأ في التسليم التلقائي:', err);
+    toast.error('فشل التسليم التلقائي');
+  }
+};
 const submitExamManually = async () => {
   if (!takingExam) return;
 
@@ -582,7 +619,7 @@ const submitExamManually = async () => {
 
     if (qErr) throw qErr;
 
-    // 2) قراءة الإجابات الموجودة (لو في)
+    // 2) قراءة الإجابات الموجودة (إن وجدت)
     const { data: existingAnswers } = await supabase
       .from('exam_answers')
       .select('question_id, selected_answer')
@@ -592,43 +629,34 @@ const submitExamManually = async () => {
       (existingAnswers || []).map(a => [a.question_id, a.selected_answer])
     );
 
-    // تحويل الإجابة الإنجليزية للعربي فقط للتخزين (الإظهار)
-    const convertAnswerToArabic = (ans) => {
-      const map = { 
-        'A': 'أ', 'a': 'أ',
-        'B': 'ب', 'b': 'ب',
-        'C': 'ج', 'c': 'ج',
-        'D': 'د', 'd': 'د'
-      };
-      return map[ans] || null;
-    };
-
-    // 3) تحضير إدخالات/تحديثات الإجابات في exam_answers
+    // 3) تحضير إدخالات/تحديثات الإجابات
     const newAnswers = [];
     const answersToUpdate = [];
 
     qs.forEach(q => {
-      const studentAnswerRaw = takingAnswers[q.id];          // A/B/C/D
-      const convertedAnswer = convertAnswerToArabic(studentAnswerRaw); // أ/ب/ج/د (للتخزين)
+      const studentAnswerRaw = takingAnswers[q.id]; // A/B/C/D أو TRUE/FALSE
+      if (!studentAnswerRaw) return; // لو مفيش إجابة
 
-      if (!convertedAnswer) return;
+      // تخزين الإجابة كما هي (بدون تحويل)
+      const answerToStore = studentAnswerRaw;
 
       const existingAnswer = existingAnswersMap.get(q.id);
       if (!existingAnswer) {
         newAnswers.push({
           attempt_id: takingExam.id,
           question_id: q.id,
-          selected_answer: convertedAnswer,
+          selected_answer: answerToStore,
         });
-      } else if (existingAnswer !== convertedAnswer) {
+      } else if (existingAnswer !== answerToStore) {
         answersToUpdate.push({
           question_id: q.id,
           attempt_id: takingExam.id,
-          selected_answer: convertedAnswer,
+          selected_answer: answerToStore,
         });
       }
     });
 
+    // إدخال إجابات جديدة
     if (newAnswers.length > 0) {
       const { error: insertErr } = await supabase
         .from('exam_answers')
@@ -636,6 +664,7 @@ const submitExamManually = async () => {
       if (insertErr) throw insertErr;
     }
 
+    // تحديث إجابات موجودة
     for (const update of answersToUpdate) {
       const { error: updateErr } = await supabase
         .from('exam_answers')
@@ -645,30 +674,57 @@ const submitExamManually = async () => {
       if (updateErr) throw updateErr;
     }
 
-    // 4) ✅ حساب الدرجة والنسبة (محليًا) بالاعتماد على A/B/C/D
-    // correct_answer في الجدول محفوظ بالإنجليزي (A-D)، لذلك نقارن على الإنجليزي
+    // 4) حساب الدرجة والنسبة
     let score = 0;
     let totalMarks = Number(takingExam.total_marks) || 0;
 
-    // لو total_marks مش متسجل بشكل صحيح، احسبه من مجموع marks للأسئلة
+    // لو total_marks مش متسجل، احسبه من مجموع marks للأسئلة
     if (!totalMarks) {
       totalMarks = qs.reduce((s, q) => s + Number(q.marks || 1), 0);
     }
 
+    console.log('📊 بدء حساب الدرجات:');
+    console.log('  إجمالي الدرجات:', totalMarks);
+
     qs.forEach(q => {
-      const studentAns = (takingAnswers[q.id] || '').toString().toUpperCase(); // A-D
-      // لو حصل إن correct_answer متخزن عربي بالخطأ، حوله لإنجليزي عبر OPTION_TO_ENGLISH
-      let correct = (q.correct_answer || '').toString().toUpperCase();
-      if (!['A', 'B', 'C', 'D'].includes(correct)) {
-        const mapBack = { 'أ': 'A', 'ب': 'B', 'ج': 'C', 'د': 'D' };
-        correct = mapBack[correct] || correct;
+      let studentAns = (takingAnswers[q.id] || '').toString().toUpperCase().trim();
+      let correctAns = (q.correct_answer || '').toString().toUpperCase().trim();
+
+      // ✅ معالجة خاصة لأسئلة True/False
+      if (q.question_type === 'true_false') {
+        // تحويل TRUE/FALSE لـ A/B للمقارنة مع قاعدة البيانات القديمة
+        if (studentAns === 'TRUE') studentAns = 'A';
+        if (studentAns === 'FALSE') studentAns = 'B';
+        
+        // لو correct_answer = TRUE/FALSE، حولهم لـ A/B
+        if (correctAns === 'TRUE' || correctAns === 'T' || correctAns === '1') correctAns = 'A';
+        if (correctAns === 'FALSE' || correctAns === 'F' || correctAns === '0') correctAns = 'B';
       }
-      if (studentAns && studentAns === correct) {
-        score += Number(q.marks || 1);
+
+      const isCorrect = studentAns && studentAns === correctAns;
+      const questionMarks = Number(q.marks || 1);
+
+      // طباعة تفاصيل كل سؤال
+      console.log(`  السؤال ${q.question_order}:`, {
+        نوع: q.question_type,
+        'إجابة الطالب (أصلية)': takingAnswers[q.id],
+        'إجابة الطالب (معالجة)': studentAns,
+        'الإجابة الصحيحة (أصلية)': q.correct_answer,
+        'الإجابة الصحيحة (معالجة)': correctAns,
+        'هل متطابقة؟': isCorrect ? '✅ نعم' : '❌ لا',
+        الدرجات: isCorrect ? `+${questionMarks}` : '0'
+      });
+
+      if (isCorrect) {
+        score += questionMarks;
       }
     });
 
     const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
+
+    console.log('📊 النتيجة النهائية:');
+    console.log('  الدرجة:', score, '/', totalMarks);
+    console.log('  النسبة:', percentage.toFixed(2), '%');
 
     // 5) تحديث attempt بالنتيجة والحالة ووقت التسليم
     const { error: updateAttemptErr } = await supabase
@@ -688,7 +744,17 @@ const submitExamManually = async () => {
     setTakingExam(null);
     setTakingAnswers({});
 
-    toast.success(` تم تسليم الامتحان بنجاح`);
+    // رسالة نجاح محسّنة
+    const passMarks = Number(takingExam.pass_marks) || (totalMarks * 0.5);
+    const isPassed = score >= passMarks;
+
+    toast.success(
+      `تم تسليم الامتحان بنجاح!\n` +
+      `الدرجة: ${score}/${totalMarks} (${percentage.toFixed(1)}%)\n` +
+      `${isPassed ? '✅ ناجح' : '❌ راسب'}`,
+      { autoClose: 5000 }
+    );
+
     await fetchExams();
 
   } catch (err) {
@@ -696,7 +762,6 @@ const submitExamManually = async () => {
     toast.error('حدث خطأ أثناء تسليم الامتحان: ' + (err.message || ''));
   }
 };
-
 
   const updateTakingAnswer = (questionId, answer) => {
     setTakingAnswers(prev => ({
@@ -706,17 +771,18 @@ const submitExamManually = async () => {
   };
 
   const addQuestion = () => {
-    setQuestions(prev => [...prev, {
-      question_text: '',
-      option_a: '',
-      option_b: '',
-      option_c: '',
-      option_d: '',
-      correct_answer: 'A',
-      marks: 1
-    }]);
-    setNumQuestions(prev => prev + 1);
-  };
+  setQuestions(prev => [...prev, {
+    question_text: '',
+    question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
+    option_a: '',
+    option_b: '',
+    option_c: '',
+    option_d: '',
+    correct_answer: 'A',
+    marks: 1
+  }]);
+  setNumQuestions(prev => prev + 1);
+};
 
   const removeQuestion = (index) => {
     if (questions.length > 1) {
@@ -750,15 +816,16 @@ const submitExamManually = async () => {
       end_date: '',
       is_active: true
     });
-    setQuestions([{
-      question_text: '',
-      option_a: '',
-      option_b: '',
-      option_c: '',
-      option_d: '',
-      correct_answer: 'A',
-      marks: 1
-    }]);
+ setQuestions([{
+  question_text: '',
+  question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
+  option_a: '',
+  option_b: '',
+  option_c: '',
+  option_d: '',
+  correct_answer: 'A',
+  marks: 1
+}]);
     setNumQuestions(1);
   };
 
@@ -795,15 +862,16 @@ const submitExamManually = async () => {
 
       if (error) throw error;
       if (data && data.length) {
-        setQuestions(data.map(d => ({
-          question_text: d.question_text,
-          option_a: d.option_a,
-          option_b: d.option_b,
-          option_c: d.option_c,
-          option_d: d.option_d,
-          correct_answer: d.correct_answer || 'A',
-          marks: Number(d.marks || 1)
-        })));
+setQuestions(data.map(d => ({
+  question_text: d.question_text,
+  question_type: d.question_type || 'multiple_choice', // ✅ إضافة نوع السؤال
+  option_a: d.option_a,
+  option_b: d.option_b,
+  option_c: d.option_c,
+  option_d: d.option_d,
+  correct_answer: d.correct_answer || 'A',
+  marks: Number(d.marks || 1)
+})));
         setNumQuestions(data.length);
       } else {
         setQuestions([{

@@ -137,21 +137,22 @@ const Login = () => {
   
 
   // إعادة تعيين كلمة المرور
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setResetMessage('');
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (error) throw error;
-      setResetMessage('✅ تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني!');
-      setResetEmail('');
-      setTimeout(() => { setShowResetForm(false); setResetMessage(''); }, 3000);
-    } catch (error) {
-      setResetMessage(`❌ خطأ: ${error.message}`);
-    }
-  };
+ const handleResetPassword = async (e) => {
+  e.preventDefault();
+  setResetMessage('');
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/#/update-password`,
+    });
+    if (error) throw error;
+    setResetMessage('✅ تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني!');
+    setResetEmail('');
+    setTimeout(() => { setShowResetForm(false); setResetMessage(''); }, 3000);
+  } catch (error) {
+    setResetMessage(`❌ خطأ: ${error.message}`);
+  }
+};
+
 
   // إعادة إرسال رسالة التفعيل
   const handleResendConfirmation = async (e) => {

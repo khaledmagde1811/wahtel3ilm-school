@@ -1,87 +1,98 @@
 import { supabase } from "../Utilities/supabaseClient";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AnimatedBackground from "../Utilities/AnimatedBackground";
-import { Lock, CheckCircle } from "lucide-react";
+import { Lock } from "lucide-react";
 
 export default function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [tokenValid, setTokenValid] = useState(false);
   const [expiredOrInvalid, setExpiredOrInvalid] = useState(false);
+
   const [resendEmail, setResendEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
+
   const navigate = useNavigate();
 
+  // أداة صغيرة لاستخراج بارامات من أي سترينج
+  const parseParams = (str) => {
+    try {
+      const params = new URLSearchParams(str || "");
+      const obj = {};
+      for (const [k, v] of params.entries()) obj[k] = v;
+      return obj;
+    } catch {
+      return {};
+    }
+  };
+
+  // نعمل parsing ذكي للهاش + الكويري
+  const parsedTokens = useMemo(() => {
+    // مثال محتمل: "#/reset-password#access_token=...&refresh_token=...&type=recovery"
+    const rawHash = window.location.hash || ""; // يبدأ بـ '#'
+    const hashNoHash = rawHash.startsWith("#") ? rawHash.slice(1) : rawHash; // يشيل أول '#'
+
+    // لو فيه هاشين: ناخد كل ما بعد أول '#'
+    const parts = hashNoHash.split("#");
+    const afterRoute = parts.length > 1 ? parts.slice(1).join("#") : parts[0];
+
+    const hashParams = parseParams(afterRoute);
+    const queryParams = parseParams(window.location.search);
+
+    const access_token = hashParams.access_token || queryParams.access_token || "";
+    const refresh_token = hashParams.refresh_token || queryParams.refresh_token || "";
+    const type = hashParams.type || queryParams.type || "";
+    const err = hashParams.error || queryParams.error || "";
+
+    return { access_token, refresh_token, type, err };
+  }, []);
+
   useEffect(() => {
-    // نقرأ الهـاش بالكامل (كل شيء بعد #)
-    // أمثلة: 
-    // 1) "/reset-password#access_token=XXX&type=recovery..."
-    // 2) "access_token=XXX&type=recovery..."
-    const rawHash = window.location.hash || ""; // يعطي شيئًا مثل "#/reset-password#access_token=..."
-    const withoutHash = rawHash.startsWith("#") ? rawHash.slice(1) : rawHash; // "/reset-password#access_token=..."
-    // إذا فيه # ثاني نفصل عنده ونأخذ الجزء اللي بعده
-    const tokenPart = withoutHash.includes("#") ? withoutHash.split("#").slice(1).join("#") : withoutHash;
-    // كمان نحاول من search كوسيلة احتياطية (بعض حالات قد تضع المعلمات في query)
-    const qs = new URLSearchParams(window.location.search);
-    const fallbackAccess = qs.get("access_token");
-    const fallbackRefresh = qs.get("refresh_token");
-    const fallbackError = qs.get("error");
-
-    // الآن نحاول استخراج من tokenPart
-    const params = new URLSearchParams(tokenPart || "");
-    const accessToken = params.get("access_token") || fallbackAccess;
-    const refreshToken = params.get("refresh_token") || fallbackRefresh;
-    const type = params.get("type");
-    const hashError = params.get("error") || fallbackError;
-
-    // حالة وجود خطأ في الهاش (مثل otp_expired)
-    if (hashError) {
-      setMessage("رابط إعادة التعيين غير صالح أو انتهت صلاحيته ❌");
-      setExpiredOrInvalid(true);
-      setTokenValid(false);
-      return;
-    }
-
-    // لا يوجد توكن => رابط غير صالح
-    if (!accessToken) {
-      setMessage("لم يتم العثور على رمز التحقق في الرابط. يُرجى طلب رابط جديد. ❌");
-      setExpiredOrInvalid(true);
-      setTokenValid(false);
-      return;
-    }
-
-    // إذا النوع ليس recovery يمكن رفض الطلب
-    if (type && type !== "recovery") {
-      setMessage("هذا الرابط غير خاص بإعادة تعيين كلمة المرور ❌");
-      setExpiredOrInvalid(true);
-      setTokenValid(false);
-      return;
-    }
-
-    // حاول إعداد الجلسة (يمكن تمرير refresh_token إن وُجد)
     const setupSession = async () => {
+      // أي خطأ صريح من Supabase في الرابط
+      if (parsedTokens.err) {
+        setMessage("رابط إعادة التعيين غير صالح أو منتهي الصلاحية ❌");
+        setExpiredOrInvalid(true);
+        setTokenValid(false);
+        return;
+      }
+
+      // لازم يكون type=recovery و access_token موجودين
+      if (!parsedTokens.access_token || (parsedTokens.type && parsedTokens.type !== "recovery")) {
+        setMessage("لم يتم العثور على رمز صالح لإعادة التعيين. يُرجى طلب رابط جديد ❌");
+        setExpiredOrInvalid(true);
+        setTokenValid(false);
+        return;
+      }
+
       try {
-        // بعض إصدارات supabase تتطلب كل من access & refresh؛ إن لم يتوفر refresh، نعطي فقط access_token
-        const sessionPayload = refreshToken
-          ? { access_token: accessToken, refresh_token: refreshToken }
-          : { access_token: accessToken };
+        // setSession يفضّل وجود الاثنين (access & refresh) في v2
+        const sessionPayload = parsedTokens.refresh_token
+          ? { access_token: parsedTokens.access_token, refresh_token: parsedTokens.refresh_token }
+          : { access_token: parsedTokens.access_token };
 
         const { error } = await supabase.auth.setSession(sessionPayload);
         if (error) {
           console.error("setSession error:", error);
-          setMessage("تعذّر إنشاء الجلسة. الرابط قد يكون منتهي الصلاحية ❌");
+          setMessage("تعذّر إنشاء الجلسة. قد تكون صلاحية الرابط انتهت ❌");
           setExpiredOrInvalid(true);
           setTokenValid(false);
         } else {
-          setMessage("");
           setTokenValid(true);
           setExpiredOrInvalid(false);
+          setMessage("");
+          // نظّف الـ URL من التوكنات (اختياري لكنه أنظف)
+          try {
+            const cleanUrl = `${window.location.origin}${window.location.pathname}#/reset-password`;
+            window.history.replaceState({}, "", cleanUrl);
+          } catch {}
         }
-      } catch (err) {
-        console.error("setSession exception:", err);
+      } catch (e) {
+        console.error("setSession exception:", e);
         setMessage("حدث خطأ أثناء معالجة الرابط ❌");
         setExpiredOrInvalid(true);
         setTokenValid(false);
@@ -89,16 +100,17 @@ export default function ResetPassword() {
     };
 
     setupSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // تحديث كلمة المرور
   const handlePasswordUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
+    // تحققات بسيطة
     if (newPassword !== confirmPassword) {
-      setMessage("كلمة المرور غير متطابقة ❌");
+      setMessage("كلمتا المرور غير متطابقتين ❌");
       setLoading(false);
       return;
     }
@@ -113,8 +125,8 @@ export default function ResetPassword() {
       if (error) {
         setMessage(`خطأ في تحديث كلمة المرور: ${error.message} ❌`);
       } else {
-        setMessage("تم تحديث كلمة المرور بنجاح ✅");
-        setTimeout(() => navigate("/login"), 2000);
+        setMessage("تم تحديث كلمة المرور بنجاح ✅ سيتم تحويلك لتسجيل الدخول...");
+        setTimeout(() => navigate("/login"), 1500);
       }
     } catch (err) {
       console.error(err);
@@ -124,7 +136,6 @@ export default function ResetPassword() {
     }
   };
 
-  // إعادة إرسال رابط إعادة التعيين
   const handleResend = async (e) => {
     e.preventDefault();
     if (!resendEmail || !resendEmail.includes("@")) {
@@ -133,36 +144,37 @@ export default function ResetPassword() {
     }
     setResendLoading(true);
     setMessage("");
+
     try {
-      // دعم للإصدارات المختلفة من مكتبة supabase
-      let data, error;
+      // v2
       if (typeof supabase.auth.resetPasswordForEmail === "function") {
-        ({ data, error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
+        const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
           redirectTo: `${window.location.origin}/#/reset-password`,
-        }));
-      } else if (supabase.auth.api && typeof supabase.auth.api.resetPasswordForEmail === "function") {
-        ({ data, error } = await supabase.auth.api.resetPasswordForEmail(resendEmail, {
+        });
+        if (error) throw error;
+      }
+      // v1 fallback
+      else if (supabase.auth.api?.resetPasswordForEmail) {
+        const { error } = await supabase.auth.api.resetPasswordForEmail(resendEmail, {
           redirectTo: `${window.location.origin}/#/reset-password`,
-        }));
+        });
+        if (error) throw error;
       } else {
-        throw new Error("نسخة Supabase لا تدعم resetPasswordForEmail هنا");
+        throw new Error("نسخة Supabase لا تدعم resetPasswordForEmail في هذا العميل");
       }
 
-      if (error) {
-        console.error("resetPasswordForEmail error:", error);
-        setMessage(`تعذّر إرسال الرابط: ${error.message} ❌`);
-      } else {
-        setMessage("تم إرسال رابط جديد إلى بريدك الإلكتروني ✅ (تحقق من صندوق الوارد والمزعج)");
-        setExpiredOrInvalid(false);
-        setTokenValid(false);
-      }
+      setMessage("تم إرسال رابط جديد إلى بريدك الإلكتروني ✅ (افحص الوارد والمزعج)");
+      setExpiredOrInvalid(false);
+      setTokenValid(false);
     } catch (err) {
-      console.error(err);
-      setMessage("حدث خطأ أثناء محاولة إرسال الرابط. حاول مرة أخرى لاحقًا ❌");
+      console.error("resetPasswordForEmail:", err);
+      setMessage(`تعذّر إرسال الرابط: ${err.message || "خطأ غير متوقع"} ❌`);
     } finally {
       setResendLoading(false);
     }
   };
+
+  const canSubmit = tokenValid && !loading && newPassword.trim() && newPassword === confirmPassword;
 
   return (
     <AnimatedBackground className="min-h-screen flex items-center justify-center p-6" dir="rtl">
@@ -170,21 +182,27 @@ export default function ResetPassword() {
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-[#665446] mb-2">إعادة تعيين كلمة المرور</h2>
           <p className="text-gray-600 text-sm">
-            {tokenValid ? "أدخل كلمة المرور الجديدة لتحديث حسابك" : expiredOrInvalid ? "الرابط غير صالح أو منتهي الصلاحية" : "جارٍ التحقق من الرابط..."}
+            {tokenValid
+              ? "أدخل كلمة المرور الجديدة لتحديث حسابك"
+              : expiredOrInvalid
+              ? "الرابط غير صالح أو منتهي الصلاحية"
+              : "جارٍ التحقق من الرابط..."}
           </p>
         </div>
 
         {message && (
-          <div className={`text-center text-sm mb-4 p-4 rounded-lg ${
-            message.includes("تم تحديث") || message.includes("تم إرسال")
-              ? "bg-green-100 text-green-700 border border-green-200"
-              : "bg-red-100 text-red-700 border border-red-200"
-          }`}>
+          <div
+            className={`text-center text-sm mb-4 p-4 rounded-lg ${
+              /تم تحديث|تم إرسال|✅/i.test(message)
+                ? "bg-green-100 text-green-700 border border-green-200"
+                : "bg-red-100 text-red-700 border border-red-200"
+            }`}
+          >
             {message}
           </div>
         )}
 
-        {tokenValid && (
+        {tokenValid ? (
           <form onSubmit={handlePasswordUpdate} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-[#665446] mb-2">كلمة المرور الجديدة</label>
@@ -195,7 +213,9 @@ export default function ResetPassword() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full p-3 pr-10 border border-[#CDC0B6]/30 rounded-lg bg-white/80"
-                  required minLength="6" disabled={loading}
+                  required
+                  minLength={6}
+                  disabled={loading}
                 />
                 <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               </div>
@@ -210,7 +230,8 @@ export default function ResetPassword() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full p-3 pr-10 border border-[#CDC0B6]/30 rounded-lg bg-white/80"
-                  required disabled={loading}
+                  required
+                  disabled={loading}
                 />
                 <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               </div>
@@ -218,19 +239,25 @@ export default function ResetPassword() {
 
             <button
               type="submit"
-              disabled={loading || !newPassword.trim() || newPassword !== confirmPassword}
-              className="w-full py-3 bg-[#665446] text-white rounded-lg shadow-lg"
+              disabled={!canSubmit}
+              className={`w-full py-3 rounded-lg shadow-lg text-white ${
+                canSubmit ? "bg-[#665446] hover:opacity-95" : "bg-[#665446]/60 cursor-not-allowed"
+              }`}
             >
               {loading ? "جاري التحديث..." : "تحديث كلمة المرور"}
             </button>
 
             <div className="text-center">
-              <button type="button" onClick={() => navigate("/login")} className="text-[#665446] underline text-sm">العودة لتسجيل الدخول</button>
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="text-[#665446] underline text-sm"
+              >
+                العودة لتسجيل الدخول
+              </button>
             </div>
           </form>
-        )}
-
-        {!tokenValid && (
+        ) : (
           <div className="space-y-4">
             <p className="text-sm text-gray-700">إذا انتهت صلاحية الرابط يمكنك طلب رابط جديد هنا:</p>
 
@@ -254,7 +281,13 @@ export default function ResetPassword() {
             </form>
 
             <div className="text-center">
-              <button type="button" onClick={() => navigate("/login")} className="text-[#665446] underline text-sm">العودة لتسجيل الدخول</button>
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="text-[#665446] underline text-sm"
+              >
+                العودة لتسجيل الدخول
+              </button>
             </div>
           </div>
         )}
