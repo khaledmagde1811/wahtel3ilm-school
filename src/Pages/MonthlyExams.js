@@ -750,7 +750,7 @@ const submitExamManually = async () => {
 
     toast.success(
       `تم تسليم الامتحان بنجاح!\n` +
-      `الدرجة: ${score}/${totalMarks} (${percentage.toFixed(1)}%)\n` +
+      ` لمعرف النتيجه حمل النتيجة` +
       `${isPassed ? '✅ ناجح' : '❌ راسب'}`,
       { autoClose: 5000 }
     );

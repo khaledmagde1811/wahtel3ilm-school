@@ -88,12 +88,12 @@ const UpdatePassword = () => {
 
       if (accessToken && refreshToken) {
         // أنشئ الجلسة من التوكنات
-        const { error } = await supabase.auth.setSession({
+                const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
 
-        if (error) {
+        if (error) {ء
           console.error('setSession error:', error);
           setMessage('الرابط غير صحيح أو منتهي الصلاحية');
           setMessageType('error');
@@ -130,6 +130,7 @@ const UpdatePassword = () => {
       setIsCheckingToken(false);
     }
   };
+  
 
   // ======= Submit =======
   const handleUpdatePassword = async (e) => {
