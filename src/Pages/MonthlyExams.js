@@ -496,7 +496,7 @@ const payloadExam = {
     }
   };
 
-  const startExam = async (exam) => {
+const startExam = async (exam) => {
     if (studentAttempts[exam.id]) {
       toast.warning('لقد أنهيت هذا الامتحان بالفعل!');
       return;
@@ -569,12 +569,28 @@ const payloadExam = {
 
       toast.success('تم بدء الامتحان بنجاح!');
 
+      // ✅ التمرير السلس للامتحان وأول سؤال
+      setTimeout(() => {
+        const panel = document.getElementById('exam-taking-panel');
+        if (panel) {
+          // التمرير للبانل أولاً
+          panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          
+          // ثم التمرير لأول سؤال بعد 300ms
+          setTimeout(() => {
+            const firstQuestion = panel.querySelector('article');
+            if (firstQuestion) {
+              firstQuestion.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 300);
+        }
+      }, 100);
+
     } catch (err) {
       console.error('خطأ في بدء الامتحان:', err);
       toast.error('تعذر بدء الامتحان');
     }
   };
-
  const autoSubmitExam = async (attempt, qs) => {
   try {
     // ✅ تحضير الإجابات كما هي (بدون تحويل)
@@ -1060,8 +1076,27 @@ const generateAllExamsCertificate = async () => {
   style={{ zIndex: 9999 }}
 />
        {/* ✅ بانِل حلّ الامتحان داخل الصفحة — بدون نافذة منبثقة */}
+{/* ✅ بانِل حلّ الامتحان داخل الصفحة — بدون نافذة منبثقة */}
 {takingExam && (
-  <div className="flex-1 overflow-auto">
+  <div 
+    className="flex-1 overflow-auto animate-fadeIn" 
+    id="exam-taking-panel"
+    style={{
+      animation: 'fadeInDown 0.5s ease-out'
+    }}
+  >
+    <style jsx>{`
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `}</style>
     <div className="max-w-7xl mx-auto">
       <section className="w-full max-w-5xl mx-auto my-4 sm:my-8" dir="rtl">
         {/* Header */}
@@ -1543,7 +1578,7 @@ const generateAllExamsCertificate = async () => {
   <section className="max-w-7xl mx-auto mb-8 px-2 sm:px-4" ref={formRef} dir="rtl">
     <div className="relative rounded-2xl shadow-xl border border-[#E6D9C8] overflow-hidden bg-white/80 backdrop-blur">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-gradient-to-r from-[#665446] to-[#8B7355] text-white">
+<header className="sticky top-0 z-20 rounded-2xl bg-gradient-to-r from-[#665446] to-[#8B7355] text-white shadow-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 sm:px-6 py-4">
           <div className="min-w-0">
             <h2 className="text-xl sm:text-2xl font-bold font-[Almarai] truncate">
@@ -1936,8 +1971,8 @@ const generateAllExamsCertificate = async () => {
       </div>
 
       {/* Footer */}
-      <footer className="sticky bottom-0 inset-x-0 bg-white border-t border-gray-200/80 p-3 sm:p-4">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+      <footer className="sticky bottom-0 z-20 mt-6 bg-white/95 backdrop-blur rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-lg">
+  <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => {
               setShowCreateForm(false);
