@@ -19,6 +19,7 @@ const { jsPDF } = jspdfMod;
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+
 const TEXT_COLOR = '#806445';
 const CARD_BG = '#F5EDE2';
 const DEFAULT_DURATION_MIN = 60;
@@ -56,10 +57,13 @@ const MonthlyExams = () => {
   const [filterMonth, setFilterMonth] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(6);
-  const [studentAttempts, setStudentAttempts] = useState({});
-
+  const [activeTab, setActiveTab] = useState('all'); // ✅ للتبويبات
+const [currentPage, setCurrentPage] = useState(1);
+const [itemsPerPage] = useState(6);
+const [studentAttempts, setStudentAttempts] = useState({});
+// ✅ إضافة هنا
+const [showLevelSelector, setShowLevelSelector] = useState(false); // ✅ أضف هنا
+const [selectedLevel, setSelectedLevel] = useState(''); // ✅ أ
   const [examForm, setExamForm] = useState({
     title: '',
     description: '',
@@ -70,7 +74,8 @@ const MonthlyExams = () => {
     pass_marks: 50,
     start_date: '',
     end_date: '',
-    is_active: true
+  level_scope: 'shared',
+      is_active: true
   });
 
   const formRef = useRef(null);
@@ -86,6 +91,8 @@ const MonthlyExams = () => {
   }]);
   const [numQuestions, setNumQuestions] = useState(1);
 
+
+  
   useEffect(() => {
     if (showCreateForm && formRef.current) {
       setTimeout(() => {
@@ -104,10 +111,9 @@ const MonthlyExams = () => {
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    filterAndPaginateExams();
-  }, [exams, searchTerm, filterMonth, filterSubject, filterStatus, currentPage]);
-
+ useEffect(() => {
+  filterAndPaginateExams();
+}, [exams, searchTerm, filterMonth, filterSubject, filterStatus, activeTab, currentPage, selectedLevel, userRole]);
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
@@ -263,36 +269,50 @@ for (let i = copy.length; i < n; i++) {
     return `${minutes} دقيقة`;
   };
 
-  const filterAndPaginateExams = () => {
-    let filtered = exams;
+const filterAndPaginateExams = () => {
+  let filtered = exams;
 
-    if (searchTerm) {
-      filtered = filtered.filter(exam =>
-        exam.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.subject?.toLowerCase().includes(searchTerm.toLowerCase())
+  if (searchTerm) {
+    filtered = filtered.filter(exam =>
+      exam.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exam.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exam.subject?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }
+
+  if (filterMonth) {
+    filtered = filtered.filter(exam => exam.month === filterMonth);
+  }
+
+  if (filterSubject) {
+    filtered = filtered.filter(exam => exam.subject === filterSubject);
+  }
+
+  // ✅ فلتر المستوى - الامتحانات المشتركة تظهر في كل المستويات
+  if (userRole !== 'admin' && activeTab !== 'all') {
+    if (activeTab === 'level1') {
+      filtered = filtered.filter(exam => 
+        exam.level_scope === 'level1' || exam.level_scope === 'shared'
+      );
+    } else if (activeTab === 'level2') {
+      filtered = filtered.filter(exam => 
+        exam.level_scope === 'level2' || exam.level_scope === 'shared'
       );
     }
+  }
 
-    if (filterMonth) {
-      filtered = filtered.filter(exam => exam.month === filterMonth);
-    }
+  if (filterStatus === 'active') {
+    filtered = filtered.filter(exam => exam.is_active);
+  } else if (filterStatus === 'inactive') {
+    filtered = filtered.filter(exam => !exam.is_active);
+  }
 
-    if (filterSubject) {
-      filtered = filtered.filter(exam => exam.subject === filterSubject);
-    }
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-    if (filterStatus === 'active') {
-      filtered = filtered.filter(exam => exam.is_active);
-    } else if (filterStatus === 'inactive') {
-      filtered = filtered.filter(exam => !exam.is_active);
-    }
-
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
-
-    setFilteredExams(paginated);
-  };
+  setFilteredExams(paginated);
+};
+  
 
   const inputToIso = (val) => {
     if (!val) return null;
@@ -328,19 +348,19 @@ for (let i = copy.length; i < n; i++) {
   }
 
   try {
-    const payloadExam = {
-      title: examForm.title,
-      description: examForm.description || null,
-      month: examForm.month,
-      subject: examForm.subject,
-      duration_minutes: Number(examForm.duration_minutes) || DEFAULT_DURATION_MIN,
-      total_marks: Number(examForm.total_marks) || 100,
-      pass_marks: Number(examForm.pass_marks) || 50,
-      start_date: examForm.start_date ? new Date(examForm.start_date).toISOString() : new Date().toISOString(),
-      end_date: examForm.end_date ? new Date(examForm.end_date).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      is_active: examForm.is_active ?? true
-    };
-
+const payloadExam = {
+  title: examForm.title,
+  description: examForm.description || null,
+  month: examForm.month,
+  subject: examForm.subject,
+  level_scope: examForm.level_scope || 'shared', // ✅ إضافة المستوى
+  duration_minutes: Number(examForm.duration_minutes) || DEFAULT_DURATION_MIN,
+  total_marks: Number(examForm.total_marks) || 100,
+  pass_marks: Number(examForm.pass_marks) || 50,
+  start_date: examForm.start_date ? new Date(examForm.start_date).toISOString() : new Date().toISOString(),
+  end_date: examForm.end_date ? new Date(examForm.end_date).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  is_active: examForm.is_active ?? true
+};
     if (editingExam) {
       // ========== تعديل امتحان موجود ==========
       const { error } = await supabase
@@ -751,7 +771,7 @@ const submitExamManually = async () => {
     toast.success(
       `تم تسليم الامتحان بنجاح!\n` +
       ` لمعرف النتيجه حمل النتيجة` +
-      `${isPassed ? '✅ ناجح' : '❌ راسب'}`,
+      `}`,
       { autoClose: 5000 }
     );
 
@@ -809,6 +829,7 @@ const submitExamManually = async () => {
       description: '',
       month: '',
       subject: '',
+      level_scope: 'shared', // ✅ إضافة
       duration_minutes: DEFAULT_DURATION_MIN,
       total_marks: 100,
       pass_marks: 50,
@@ -833,16 +854,17 @@ const submitExamManually = async () => {
     if (exam) {
       setEditingExam(exam);
       setExamForm({
-        title: exam.title || '',
-        description: exam.description || '',
-        month: exam.month || '',
-        subject: exam.subject || '',
-        duration_minutes: exam.duration_minutes || DEFAULT_DURATION_MIN,
-        total_marks: exam.total_marks || 100,
-        pass_marks: exam.pass_marks || 50,
-        start_date: isoToInput(exam.start_date || null),
-        end_date: isoToInput(exam.end_date || null),
-        is_active: exam.is_active ?? true
+      title: exam.title || '',
+  description: exam.description || '',
+  month: exam.month || '',
+  subject: exam.subject || '',
+  level_scope: exam.level_scope || 'shared', // ✅ إضافة
+  duration_minutes: exam.duration_minutes || DEFAULT_DURATION_MIN,
+  total_marks: exam.total_marks || 100,
+  pass_marks: exam.pass_marks || 50,
+  start_date: isoToInput(exam.start_date || null),
+  end_date: isoToInput(exam.end_date || null),
+  is_active: exam.is_active ?? true
       });
       loadExamQuestions(exam.id);
     } else {
@@ -851,6 +873,29 @@ const submitExamManually = async () => {
     }
     setShowCreateForm(true);
   };
+  // ✅ إضافة state جديد لتخزين المستوى واختيار النافذة
+
+
+// ✅ تعديل useEffect لعرض النافذة للطالب فقط
+useEffect(() => {
+  if (currentUser && userRole !== 'admin' && !selectedLevel) {
+    setShowLevelSelector(true);
+  }
+}, [currentUser, userRole, selectedLevel]);
+
+// ✅ تعديل filterAndPaginateExams لتطبيق فلتر المستوى المحفوظ
+useEffect(() => {
+  filterAndPaginateExams();
+}, [exams, searchTerm, filterMonth, filterSubject, filterStatus, activeTab, currentPage, selectedLevel, userRole]);
+
+// ✅ دالة لحفظ المستوى وإخفاء النافذة
+const handleLevelSelection = (level) => {
+  setSelectedLevel(level);
+  setActiveTab(level); // ✅ مهم جداً - عشان يشتغل الفلتر
+  setShowLevelSelector(false);
+  setCurrentPage(1);
+  toast.success(`تم اختيار ${level === 'level1' ? 'المستوى الأول' : 'التمهيدي'} بنجاح`);
+};
 
   const loadExamQuestions = async (examId) => {
     try {
@@ -1001,16 +1046,19 @@ const generateAllExamsCertificate = async () => {
   return (
     <AnimatedBackground className="min-h-screen" dir="rtl">
 <div className="min-h-screen flex flex-col px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10 overflow-visible">
-        <ToastContainer 
-          position="top-right" 
-          autoClose={3500} 
-          hideProgressBar={false} 
-          newestOnTop 
-          closeOnClick 
-          rtl 
-          style={{ zIndex: 9999 }} 
-        />
-
+       <ToastContainer 
+  position="top-right" 
+  autoClose={3500}
+  hideProgressBar={false}
+  newestOnTop
+  closeOnClick
+  rtl
+  pauseOnHover
+  draggable
+  enableMultiContainer={false}  // ✅ هذا السطر مهم
+  containerId="main-toast"       // ✅ وهذا
+  style={{ zIndex: 9999 }}
+/>
        {/* ✅ بانِل حلّ الامتحان داخل الصفحة — بدون نافذة منبثقة */}
 {takingExam && (
   <div className="flex-1 overflow-auto">
@@ -1206,6 +1254,42 @@ const generateAllExamsCertificate = async () => {
           مرحباً {userName} ({userRole === 'admin' ? 'مشرف' : 'طالب'})
         </p>
       </div>
+
+      {/* ✅ تبويبات المستويات للطلاب فقط */}
+{userRole !== 'admin' && (
+  <div className="flex gap-2 bg-white rounded-lg p-1 shadow-md">
+    <button
+      onClick={() => setActiveTab('all')}
+      className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${
+        activeTab === 'all'
+          ? 'bg-[#665446] text-white'
+          : 'bg-transparent text-gray-600 hover:bg-gray-100'
+      }`}
+    >
+      كل الامتحانات
+    </button>
+    <button
+      onClick={() => setActiveTab('level1')}
+      className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${
+        activeTab === 'level1'
+          ? 'bg-[#665446] text-white'
+          : 'bg-transparent text-gray-600 hover:bg-gray-100'
+      }`}
+    >
+      المستوى الأول
+    </button>
+    <button
+      onClick={() => setActiveTab('level2')}
+      className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${
+        activeTab === 'level2'
+          ? 'bg-[#665446] text-white'
+          : 'bg-transparent text-gray-600 hover:bg-gray-100'
+      }`}
+    >
+      التمهيدي
+    </button>
+  </div>
+)}
 
       {/* ✅ زر تحميل الشهادة للطالب فقط */}
       {userRole !== 'admin' && (
@@ -1525,6 +1609,20 @@ const generateAllExamsCertificate = async () => {
               placeholder="مثال: سبتمبر"
               className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
             />
+ <div className="space-y-2">
+  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+    المستوى *
+  </label>
+  <select
+    value={examForm.level_scope}
+    onChange={(e) => setExamForm({ ...examForm, level_scope: e.target.value })}
+    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+  >
+    <option value="shared">مشترك (كل المستويات)</option>
+    <option value="level1">المستوى الأول</option>
+    <option value="level2">التمهيدي</option>
+  </select>
+</div>
           </div>
 
           <div className="space-y-2">
@@ -2103,6 +2201,121 @@ const generateAllExamsCertificate = async () => {
 
 
       </div>
+      {/* ✅ نافذة اختيار المستوى - تظهر للطالب فقط */}
+{showLevelSelector && userRole !== 'admin' && (
+  <div 
+    className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+    style={{
+      animation: 'fadeIn 0.3s ease-out'
+    }}
+  >
+    <style jsx>{`
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `}</style>
+    
+    <div 
+      className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
+      style={{
+        animation: 'slideUp 0.4s ease-out'
+      }}
+    >
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#665446] to-[#8B7355] p-6 text-white text-center">
+        <h2 className="text-2xl sm:text-3xl font-bold font-[Almarai] mb-2">
+مرحبا بك في اختبرات الواحة        </h2>
+        <p className="text-sm opacity-90 font-[Almarai]">
+          اختر المستوى الدراسي الخاص بك
+        </p>
+      </div>
+
+      {/* Body */}
+      <div className="p-6 space-y-4">
+        <button
+          onClick={() => handleLevelSelection('level1')}
+          className="w-full group relative overflow-hidden rounded-2xl border-3 border-[#665446] bg-gradient-to-br from-white to-gray-50 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+          style={{
+            borderWidth: '3px'
+          }}
+        >
+          <div 
+            className="absolute inset-0 bg-[#665446] opacity-0 group-hover:opacity-5 transition-opacity duration-300"
+          ></div>
+          <div className="relative flex items-center gap-4">
+            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-[#665446] text-white flex items-center justify-center text-2xl font-bold shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+              1
+            </div>
+            <div className="flex-1 text-right">
+              <h3 className="text-xl font-bold font-[Almarai] text-[#665446] mb-1 group-hover:text-[#8B7355] transition-colors">
+                المستوى الأول
+              </h3>
+              <p className="text-sm text-gray-600 font-[Almarai]">
+المستوى الأول              </p>
+            </div>
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[#665446]">
+              ←
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handleLevelSelection('level2')}
+          className="w-full group relative overflow-hidden rounded-2xl border-3 border-[#8B7355] bg-gradient-to-br from-white to-gray-50 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+          style={{
+            borderWidth: '3px'
+          }}
+        >
+          <div 
+            className="absolute inset-0 bg-[#8B7355] opacity-0 group-hover:opacity-5 transition-opacity duration-300"
+          ></div>
+          <div className="relative flex items-center gap-4">
+            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-[#8B7355] text-white flex items-center justify-center text-2xl font-bold shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+              2
+            </div>
+            <div className="flex-1 text-right">
+              <h3 className="text-xl font-bold font-[Almarai] text-[#8B7355] mb-1 group-hover:text-[#665446] transition-colors">
+                التمهيدي
+              </h3>
+              <p className="text-sm text-gray-600 font-[Almarai]">
+المرحلة التمهيدية              </p>
+            </div>
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[#8B7355]">
+              ←
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 pb-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+          <p className="text-xs text-blue-700 font-[Almarai] flex items-center justify-center gap-2">
+            <span className="text-lg">💡</span>
+            <span>يمكنك تغيير المستوى لاحقاً من التبويبات أعلى الصفحة</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </AnimatedBackground>
   );
 };
