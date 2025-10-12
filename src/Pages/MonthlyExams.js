@@ -620,31 +620,35 @@ const normalizeCorrectForLegacy = (q, raw) => {
 };
 
 // ======= داخل كود حساب الدرجات =======
-questions.forEach((q) => {
-  const studentRaw = takingAnswers[q.id];
-  const correctRaw = q.correct_answer;
+questions.forEach(q => {
+  const questionType = (q.question_type || 'multiple_choice').toLowerCase();
+  const studentAnswerRaw = takingAnswers[q.id];
+  const correctAnswerRaw = q.correct_answer;
 
-  const student = normalizeAnswer(q, studentRaw);
-  const correct = normalizeCorrectForLegacy(q, correctRaw);
+  // تطبيع الإجابات
+  const studentAns = normalizeAnswer(q, studentAnswerRaw);
+  const correctAns = normalizeCorrectForLegacy(q, correctAnswerRaw);
 
-  const isCorrect = student !== null && correct !== null && student === correct;
-  const questionMarks = Number(q.marks || 1);
+  const isCorrect = studentAns !== null && correctAns !== null && studentAns === correctAns;
+  const questionMarks = Number(q.marks || 1); // ✅ احترام درجات السؤال
 
   gradingDetails.push({
     order: q.question_order,
-    type: q.question_type,
-    studentAnswer: studentRaw ?? 'لم يجب',
-    correctAnswer: correctRaw,
-    normalizedStudent: student,
-    normalizedCorrect: correct,
+    type: questionType,
+    studentAnswer: studentAnswerRaw || 'لم يجب',
+    correctAnswer: correctAnswerRaw,
+    normalizedStudent: studentAns,
+    normalizedCorrect: correctAns,
     isCorrect,
     marks: isCorrect ? questionMarks : 0,
-    totalMarks: questionMarks,
+    totalMarks: questionMarks
   });
 
-  if (isCorrect) score += questionMarks;
+  if (isCorrect) {
+    score += questionMarks; // ✅ إضافة درجات السؤال كاملة
+  }
 });
-      
+
       const percentage = (score / attempt.total_marks) * 100;
 
       const { error: updateErr } = await supabase
@@ -2022,21 +2026,38 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
                           </div>
 
                           {/* Options - Show based on question type */}
-                          {q.question_type === 'true_false' ? (
-  <div className="space-y-2">
-    <label className="block text-xs font-bold font-[Almarai]">
-      الإجابة الصحيحة *
-    </label>
-    <select
-      value={q.correct_answer}
-      onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
-      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-    >
-      <option value="TRUE">✓ صح</option>
-      <option value="FALSE">✗ خطأ</option>
-    </select>
+                       {q.question_type === 'true_false' ? (
+  <div className="space-y-4">
+    {/* الإجابة الصحيحة */}
+    <div className="space-y-2">
+      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+        الإجابة الصحيحة *
+      </label>
+      <select
+        value={q.correct_answer}
+        onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
+        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+      >
+        <option value="TRUE">✓ صح</option>
+        <option value="FALSE">✗ خطأ</option>
+      </select>
+    </div>
+
+    {/* ✅ أضف هنا: حقل الدرجات */}
+    <div className="space-y-2">
+      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+        الدرجات
+      </label>
+      <input
+        type="number"
+        min="1"
+        value={q.marks || 1}
+        onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
+        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+      />
+    </div>
   </div>
-)  : (
+) : (
                             // Multiple Choice Options
                             <>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
