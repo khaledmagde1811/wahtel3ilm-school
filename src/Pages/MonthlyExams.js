@@ -607,7 +607,43 @@ const MonthlyExams = () => {
 
         if (insertErr) throw insertErr;
       }
+// ضِيفها فوق بلوك التصحيح
+const normalizeCorrectForLegacy = (q, raw) => {
+  const type = String(q?.question_type || '').toLowerCase();
+  let v = raw;
+  if (type === 'true_false') {
+    const up = String(raw ?? '').trim().toUpperCase();
+    if (up === 'A') v = 'TRUE';
+    else if (up === 'B') v = 'FALSE';
+  }
+  return normalizeAnswer(q, v);
+};
 
+// ======= داخل كود حساب الدرجات =======
+questions.forEach((q) => {
+  const studentRaw = takingAnswers[q.id];
+  const correctRaw = q.correct_answer;
+
+  const student = normalizeAnswer(q, studentRaw);
+  const correct = normalizeCorrectForLegacy(q, correctRaw);
+
+  const isCorrect = student !== null && correct !== null && student === correct;
+  const questionMarks = Number(q.marks || 1);
+
+  gradingDetails.push({
+    order: q.question_order,
+    type: q.question_type,
+    studentAnswer: studentRaw ?? 'لم يجب',
+    correctAnswer: correctRaw,
+    normalizedStudent: student,
+    normalizedCorrect: correct,
+    isCorrect,
+    marks: isCorrect ? questionMarks : 0,
+    totalMarks: questionMarks,
+  });
+
+  if (isCorrect) score += questionMarks;
+});
       // ✅ حساب الدرجة
       let score = 0;
       qs.forEach(q => {
@@ -1997,36 +2033,20 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
 
                           {/* Options - Show based on question type */}
                           {q.question_type === 'true_false' ? (
-                            // True/False Options
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                                  الإجابة الصحيحة *
-                                </label>
-                                <select
-                                  value={q.correct_answer}
-                                  onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
-                                  className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                                >
-                                  <option value="TRUE">✓ صح</option>
-                                  <option value="FALSE">✗ خطأ</option>
-                                </select>
-                              </div>
-
-                              <div className="space-y-2">
-                                <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                                  الدرجات
-                                </label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={q.marks}
-                                  onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
-                                  className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                                />
-                              </div>
-                            </div>
-                          ) : (
+  <div className="space-y-2">
+    <label className="block text-xs font-bold font-[Almarai]">
+      الإجابة الصحيحة *
+    </label>
+    <select
+      value={q.correct_answer}
+      onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
+      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+    >
+      <option value="TRUE">✓ صح</option>
+      <option value="FALSE">✗ خطأ</option>
+    </select>
+  </div>
+)  : (
                             // Multiple Choice Options
                             <>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
