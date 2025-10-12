@@ -31,7 +31,7 @@ const OPTION_TO_ENGLISH = { 'أ': 'A', 'ب': 'B', 'ج': 'C', 'د': 'D' };
 
 const MonthlyExams = () => {
   const navigate = useNavigate();
-  
+
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('');
   const [userName, setUserName] = useState('');
@@ -58,12 +58,12 @@ const MonthlyExams = () => {
   const [filterSubject, setFilterSubject] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [activeTab, setActiveTab] = useState('all'); // ✅ للتبويبات
-const [currentPage, setCurrentPage] = useState(1);
-const [itemsPerPage] = useState(6);
-const [studentAttempts, setStudentAttempts] = useState({});
-// ✅ إضافة هنا
-const [showLevelSelector, setShowLevelSelector] = useState(false); // ✅ أضف هنا
-const [selectedLevel, setSelectedLevel] = useState(''); // ✅ أ
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(6);
+  const [studentAttempts, setStudentAttempts] = useState({});
+  // ✅ إضافة هنا
+  const [showLevelSelector, setShowLevelSelector] = useState(false); // ✅ أضف هنا
+  const [selectedLevel, setSelectedLevel] = useState(''); // ✅ أ
   const [examForm, setExamForm] = useState({
     title: '',
     description: '',
@@ -74,8 +74,8 @@ const [selectedLevel, setSelectedLevel] = useState(''); // ✅ أ
     pass_marks: 50,
     start_date: '',
     end_date: '',
-  level_scope: 'shared',
-      is_active: true
+    level_scope: 'shared',
+    is_active: true
   });
 
   const formRef = useRef(null);
@@ -92,7 +92,7 @@ const [selectedLevel, setSelectedLevel] = useState(''); // ✅ أ
   const [numQuestions, setNumQuestions] = useState(1);
 
 
-  
+
   useEffect(() => {
     if (showCreateForm && formRef.current) {
       setTimeout(() => {
@@ -111,9 +111,9 @@ const [selectedLevel, setSelectedLevel] = useState(''); // ✅ أ
     }
   }, [currentUser]);
 
- useEffect(() => {
-  filterAndPaginateExams();
-}, [exams, searchTerm, filterMonth, filterSubject, filterStatus, activeTab, currentPage, selectedLevel, userRole]);
+  useEffect(() => {
+    filterAndPaginateExams();
+  }, [exams, searchTerm, filterMonth, filterSubject, filterStatus, activeTab, currentPage, selectedLevel, userRole]);
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
@@ -124,18 +124,18 @@ const [selectedLevel, setSelectedLevel] = useState(''); // ✅ أ
     setQuestions(prev => {
       const copy = [...prev];
       if (n > copy.length) {
-for (let i = copy.length; i < n; i++) {
-  copy.push({
-    question_text: '',
-    question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
-    option_a: '',
-    option_b: '',
-    option_c: '',
-    option_d: '',
-    correct_answer: 'A',
-    marks: 1
-  });
-}
+        for (let i = copy.length; i < n; i++) {
+          copy.push({
+            question_text: '',
+            question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
+            option_a: '',
+            option_b: '',
+            option_c: '',
+            option_d: '',
+            correct_answer: 'A',
+            marks: 1
+          });
+        }
       } else if (n < copy.length) {
         copy.length = n;
       }
@@ -190,7 +190,7 @@ for (let i = copy.length; i < n; i++) {
       const examsList = examsData || [];
 
       const examIds = examsList.map(e => e.id).filter(Boolean);
-      
+
       if (examIds.length) {
         const { data: attempts, error: attErr } = await supabase
           .from('exam_attempts')
@@ -242,77 +242,77 @@ for (let i = copy.length; i < n; i++) {
 
   const canViewResult = (attempt) => {
     if (!attempt || !attempt.submitted_at) return false;
-    
+
     const submittedTime = new Date(attempt.submitted_at).getTime();
     const currentTime = new Date().getTime();
     const hoursPassed = (currentTime - submittedTime) / (1000 * 60 * 60);
-    
+
     return hoursPassed >= RESULT_VISIBILITY_HOURS;
   };
 
   const getTimeUntilResultAvailable = (attempt) => {
     if (!attempt || !attempt.submitted_at) return '';
-    
+
     const submittedTime = new Date(attempt.submitted_at).getTime();
     const currentTime = new Date().getTime();
     const hoursNeeded = RESULT_VISIBILITY_HOURS * 60 * 60 * 1000;
     const timeRemaining = (submittedTime + hoursNeeded) - currentTime;
-    
+
     if (timeRemaining <= 0) return '';
-    
+
     const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
     const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (hours > 0) {
       return `${hours} ساعة و ${minutes} دقيقة`;
     }
     return `${minutes} دقيقة`;
   };
 
-const filterAndPaginateExams = () => {
-  let filtered = exams;
+  const filterAndPaginateExams = () => {
+    let filtered = exams;
 
-  if (searchTerm) {
-    filtered = filtered.filter(exam =>
-      exam.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.subject?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }
-
-  if (filterMonth) {
-    filtered = filtered.filter(exam => exam.month === filterMonth);
-  }
-
-  if (filterSubject) {
-    filtered = filtered.filter(exam => exam.subject === filterSubject);
-  }
-
-  // ✅ فلتر المستوى - الامتحانات المشتركة تظهر في كل المستويات
-  if (userRole !== 'admin' && activeTab !== 'all') {
-    if (activeTab === 'level1') {
-      filtered = filtered.filter(exam => 
-        exam.level_scope === 'level1' || exam.level_scope === 'shared'
-      );
-    } else if (activeTab === 'level2') {
-      filtered = filtered.filter(exam => 
-        exam.level_scope === 'level2' || exam.level_scope === 'shared'
+    if (searchTerm) {
+      filtered = filtered.filter(exam =>
+        exam.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exam.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exam.subject?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-  }
 
-  if (filterStatus === 'active') {
-    filtered = filtered.filter(exam => exam.is_active);
-  } else if (filterStatus === 'inactive') {
-    filtered = filtered.filter(exam => !exam.is_active);
-  }
+    if (filterMonth) {
+      filtered = filtered.filter(exam => exam.month === filterMonth);
+    }
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
+    if (filterSubject) {
+      filtered = filtered.filter(exam => exam.subject === filterSubject);
+    }
 
-  setFilteredExams(paginated);
-};
-  
+    // ✅ فلتر المستوى - الامتحانات المشتركة تظهر في كل المستويات
+    if (userRole !== 'admin' && activeTab !== 'all') {
+      if (activeTab === 'level1') {
+        filtered = filtered.filter(exam =>
+          exam.level_scope === 'level1' || exam.level_scope === 'shared'
+        );
+      } else if (activeTab === 'level2') {
+        filtered = filtered.filter(exam =>
+          exam.level_scope === 'level2' || exam.level_scope === 'shared'
+        );
+      }
+    }
+
+    if (filterStatus === 'active') {
+      filtered = filtered.filter(exam => exam.is_active);
+    } else if (filterStatus === 'inactive') {
+      filtered = filtered.filter(exam => !exam.is_active);
+    }
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+    setFilteredExams(paginated);
+  };
+
 
   const inputToIso = (val) => {
     if (!val) return null;
@@ -331,131 +331,131 @@ const filterAndPaginateExams = () => {
   };
 
   const createExam = async () => {
-  // التحقق من الحقول
-  if (!examForm.title || !examForm.month || !examForm.subject) {
-    toast.error('يرجى ملء جميع الحقول المطلوبة');
-    return;
-  }
-
-  if (!examForm.start_date || !examForm.end_date) {
-    toast.error('يرجى تحديد تاريخ البدء والانتهاء');
-    return;
-  }
-
-  if (questions.length === 0 || !questions[0].question_text) {
-    toast.error('يجب إضافة سؤال واحد على الأقل');
-    return;
-  }
-
-  try {
-const payloadExam = {
-  title: examForm.title,
-  description: examForm.description || null,
-  month: examForm.month,
-  subject: examForm.subject,
-  level_scope: examForm.level_scope || 'shared', // ✅ إضافة المستوى
-  duration_minutes: Number(examForm.duration_minutes) || DEFAULT_DURATION_MIN,
-  total_marks: Number(examForm.total_marks) || 100,
-  pass_marks: Number(examForm.pass_marks) || 50,
-  start_date: examForm.start_date ? new Date(examForm.start_date).toISOString() : new Date().toISOString(),
-  end_date: examForm.end_date ? new Date(examForm.end_date).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  is_active: examForm.is_active ?? true
-};
-    if (editingExam) {
-      // ========== تعديل امتحان موجود ==========
-      const { error } = await supabase
-        .from('monthly_exams')
-        .update(payloadExam)
-        .eq('id', editingExam.id);
-
-      if (error) throw error;
-
-      // حذف الأسئلة القديمة
-      await supabase.from('exam_questions').delete().eq('exam_id', editingExam.id);
-
-      // إضافة الأسئلة الجديدة
-      const questionsToInsert = questions.map((q, index) => ({
-        exam_id: editingExam.id,
-        question_text: q.question_text,
-        question_type: q.question_type || 'multiple_choice',
-        option_a: q.option_a || null,
-        option_b: q.option_b || null,
-        option_c: q.option_c || null,
-        option_d: q.option_d || null,
-        correct_answer: q.correct_answer,
-        marks: Number(q.marks || 1),
-        question_order: index + 1
-      }));
-
-      if (questionsToInsert.length) {
-        const { error: qErr } = await supabase.from('exam_questions').insert(questionsToInsert);
-        if (qErr) throw qErr;
-      }
-
-      toast.success('تم تحديث الامتحان بنجاح!');
-      
-    } else {
-      // ========== إنشاء امتحان جديد ==========
-      
-      // ✅ إنشاء الامتحان بدون .single()
-      const { data: examDataArray, error: examError } = await supabase
-        .from('monthly_exams')
-        .insert([{ ...payloadExam, created_by: currentUser.id }])
-        .select();
-
-      if (examError) {
-        console.error('❌ خطأ في إنشاء الامتحان:', examError);
-        throw examError;
-      }
-
-      // ✅ التحقق من البيانات
-      if (!examDataArray || examDataArray.length === 0) {
-        console.error('❌ لم يتم إرجاع بيانات الامتحان');
-        toast.error('فشل إنشاء الامتحان - تحقق من الصلاحيات في Supabase');
-        return;
-      }
-
-      const examData = examDataArray[0];
-      console.log('✅ تم إنشاء الامتحان - ID:', examData.id);
-
-      // ✅ إنشاء الأسئلة
-      const questionsToInsert = questions.map((q, index) => ({
-        exam_id: examData.id,
-        question_text: q.question_text,
-        question_type: q.question_type || 'multiple_choice',
-        option_a: q.option_a || null,
-        option_b: q.option_b || null,
-        option_c: q.option_c || null,
-        option_d: q.option_d || null,
-        correct_answer: q.correct_answer,
-        marks: Number(q.marks || 1),
-        question_order: index + 1
-      }));
-
-      const { error: questionsError } = await supabase
-        .from('exam_questions')
-        .insert(questionsToInsert);
-
-      if (questionsError) {
-        console.error('❌ خطأ في إضافة الأسئلة:', questionsError);
-        throw questionsError;
-      }
-
-      console.log('✅ تم إضافة الأسئلة بنجاح');
-      toast.success('تم إنشاء الامتحان بنجاح!');
+    // التحقق من الحقول
+    if (!examForm.title || !examForm.month || !examForm.subject) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
     }
 
-    // تنظيف النموذج
-    setShowCreateForm(false);
-    resetForm();
-    setEditingExam(null);
-    fetchExams();
-    
-  } catch (error) {
-    console.error('خطأ في إنشاء/تحديث الامتحان:', error);
-    toast.error('حدث خطأ: ' + (error.message || 'حاول مرة أخرى'));
-  }
-};
+    if (!examForm.start_date || !examForm.end_date) {
+      toast.error('يرجى تحديد تاريخ البدء والانتهاء');
+      return;
+    }
+
+    if (questions.length === 0 || !questions[0].question_text) {
+      toast.error('يجب إضافة سؤال واحد على الأقل');
+      return;
+    }
+
+    try {
+      const payloadExam = {
+        title: examForm.title,
+        description: examForm.description || null,
+        month: examForm.month,
+        subject: examForm.subject,
+        level_scope: examForm.level_scope || 'shared', // ✅ إضافة المستوى
+        duration_minutes: Number(examForm.duration_minutes) || DEFAULT_DURATION_MIN,
+        total_marks: Number(examForm.total_marks) || 100,
+        pass_marks: Number(examForm.pass_marks) || 50,
+        start_date: examForm.start_date ? new Date(examForm.start_date).toISOString() : new Date().toISOString(),
+        end_date: examForm.end_date ? new Date(examForm.end_date).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        is_active: examForm.is_active ?? true
+      };
+      if (editingExam) {
+        // ========== تعديل امتحان موجود ==========
+        const { error } = await supabase
+          .from('monthly_exams')
+          .update(payloadExam)
+          .eq('id', editingExam.id);
+
+        if (error) throw error;
+
+        // حذف الأسئلة القديمة
+        await supabase.from('exam_questions').delete().eq('exam_id', editingExam.id);
+
+        // إضافة الأسئلة الجديدة
+        const questionsToInsert = questions.map((q, index) => ({
+          exam_id: editingExam.id,
+          question_text: q.question_text,
+          question_type: q.question_type || 'multiple_choice',
+          option_a: q.option_a || null,
+          option_b: q.option_b || null,
+          option_c: q.option_c || null,
+          option_d: q.option_d || null,
+          correct_answer: q.correct_answer,
+          marks: Number(q.marks || 1),
+          question_order: index + 1
+        }));
+
+        if (questionsToInsert.length) {
+          const { error: qErr } = await supabase.from('exam_questions').insert(questionsToInsert);
+          if (qErr) throw qErr;
+        }
+
+        toast.success('تم تحديث الامتحان بنجاح!');
+
+      } else {
+        // ========== إنشاء امتحان جديد ==========
+
+        // ✅ إنشاء الامتحان بدون .single()
+        const { data: examDataArray, error: examError } = await supabase
+          .from('monthly_exams')
+          .insert([{ ...payloadExam, created_by: currentUser.id }])
+          .select();
+
+        if (examError) {
+          console.error('❌ خطأ في إنشاء الامتحان:', examError);
+          throw examError;
+        }
+
+        // ✅ التحقق من البيانات
+        if (!examDataArray || examDataArray.length === 0) {
+          console.error('❌ لم يتم إرجاع بيانات الامتحان');
+          toast.error('فشل إنشاء الامتحان - تحقق من الصلاحيات في Supabase');
+          return;
+        }
+
+        const examData = examDataArray[0];
+        console.log('✅ تم إنشاء الامتحان - ID:', examData.id);
+
+        // ✅ إنشاء الأسئلة
+        const questionsToInsert = questions.map((q, index) => ({
+          exam_id: examData.id,
+          question_text: q.question_text,
+          question_type: q.question_type || 'multiple_choice',
+          option_a: q.option_a || null,
+          option_b: q.option_b || null,
+          option_c: q.option_c || null,
+          option_d: q.option_d || null,
+          correct_answer: q.correct_answer,
+          marks: Number(q.marks || 1),
+          question_order: index + 1
+        }));
+
+        const { error: questionsError } = await supabase
+          .from('exam_questions')
+          .insert(questionsToInsert);
+
+        if (questionsError) {
+          console.error('❌ خطأ في إضافة الأسئلة:', questionsError);
+          throw questionsError;
+        }
+
+        console.log('✅ تم إضافة الأسئلة بنجاح');
+        toast.success('تم إنشاء الامتحان بنجاح!');
+      }
+
+      // تنظيف النموذج
+      setShowCreateForm(false);
+      resetForm();
+      setEditingExam(null);
+      fetchExams();
+
+    } catch (error) {
+      console.error('خطأ في إنشاء/تحديث الامتحان:', error);
+      toast.error('حدث خطأ: ' + (error.message || 'حاول مرة أخرى'));
+    }
+  };
 
   const deleteExam = async (examId) => {
     const userConfirmed = window.confirm('هل أنت متأكد من حذف هذا الامتحان؟');
@@ -496,7 +496,7 @@ const payloadExam = {
     }
   };
 
-const startExam = async (exam) => {
+  const startExam = async (exam) => {
     if (studentAttempts[exam.id]) {
       toast.warning('لقد أنهيت هذا الامتحان بالفعل!');
       return;
@@ -545,9 +545,9 @@ const startExam = async (exam) => {
         return;
       }
 
-      setTakingExam({ 
-        ...attempt, 
-        questions: qs, 
+      setTakingExam({
+        ...attempt,
+        questions: qs,
         title: exam.title,
         duration_minutes: duration,
         total_marks: exam.total_marks || 100
@@ -575,7 +575,7 @@ const startExam = async (exam) => {
         if (panel) {
           // التمرير للبانل أولاً
           panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          
+
           // ثم التمرير لأول سؤال بعد 300ms
           setTimeout(() => {
             const firstQuestion = panel.querySelector('article');
@@ -591,213 +591,374 @@ const startExam = async (exam) => {
       toast.error('تعذر بدء الامتحان');
     }
   };
- const autoSubmitExam = async (attempt, qs) => {
-  try {
-    // ✅ تحضير الإجابات كما هي (بدون تحويل)
-    const answerRows = (qs || []).map(q => ({
-      attempt_id: attempt.id,
-      question_id: q.id,
-      selected_answer: takingAnswers[q.id] || null
-    }));
+  const autoSubmitExam = async (attempt, qs) => {
+    try {
+      // ✅ تحضير الإجابات كما هي (بدون تحويل)
+      const answerRows = (qs || []).map(q => ({
+        attempt_id: attempt.id,
+        question_id: q.id,
+        selected_answer: takingAnswers[q.id] || null
+      }));
 
-    if (answerRows.length) {
-      const { error: insertErr } = await supabase
-        .from('exam_answers')
-        .insert(answerRows);
-      
-      if (insertErr) throw insertErr;
-    }
+      if (answerRows.length) {
+        const { error: insertErr } = await supabase
+          .from('exam_answers')
+          .insert(answerRows);
 
-    // ✅ حساب الدرجة
-    let score = 0;
-    qs.forEach(q => {
-      const studentAnswer = (takingAnswers[q.id] || '').toString().toUpperCase();
-      const correctAnswer = (q.correct_answer || '').toString().toUpperCase();
-      
-      if (studentAnswer && studentAnswer === correctAnswer) {
-        score += Number(q.marks || 1);
-      }
-    });
-
-    const percentage = (score / attempt.total_marks) * 100;
-
-    const { error: updateErr } = await supabase
-      .from('exam_attempts')
-      .update({
-        status: 'submitted',
-        submitted_at: new Date().toISOString(),
-        score: score,
-        percentage: percentage
-      })
-      .eq('id', attempt.id);
-
-    if (updateErr) throw updateErr;
-
-    setTakingExam(null);
-    setTakingAnswers({});
-    fetchExams();
-    toast.info('انتهى الوقت — تم تسليم الامتحان تلقائياً');
-  } catch (err) {
-    console.error('خطأ في التسليم التلقائي:', err);
-    toast.error('فشل التسليم التلقائي');
-  }
-};
-const submitExamManually = async () => {
-  if (!takingExam) return;
-
-  try {
-    // 1) جلب أسئلة الامتحان بالترتيب
-    const { data: qs, error: qErr } = await supabase
-      .from('exam_questions')
-      .select('*')
-      .eq('exam_id', takingExam.exam_id)
-      .order('question_order', { ascending: true });
-
-    if (qErr) throw qErr;
-
-    // 2) قراءة الإجابات الموجودة (إن وجدت)
-    const { data: existingAnswers } = await supabase
-      .from('exam_answers')
-      .select('question_id, selected_answer')
-      .eq('attempt_id', takingExam.id);
-
-    const existingAnswersMap = new Map(
-      (existingAnswers || []).map(a => [a.question_id, a.selected_answer])
-    );
-
-    // 3) تحضير إدخالات/تحديثات الإجابات
-    const newAnswers = [];
-    const answersToUpdate = [];
-
-    qs.forEach(q => {
-      const studentAnswerRaw = takingAnswers[q.id]; // A/B/C/D أو TRUE/FALSE
-      if (!studentAnswerRaw) return; // لو مفيش إجابة
-
-      // تخزين الإجابة كما هي (بدون تحويل)
-      const answerToStore = studentAnswerRaw;
-
-      const existingAnswer = existingAnswersMap.get(q.id);
-      if (!existingAnswer) {
-        newAnswers.push({
-          attempt_id: takingExam.id,
-          question_id: q.id,
-          selected_answer: answerToStore,
-        });
-      } else if (existingAnswer !== answerToStore) {
-        answersToUpdate.push({
-          question_id: q.id,
-          attempt_id: takingExam.id,
-          selected_answer: answerToStore,
-        });
-      }
-    });
-
-    // إدخال إجابات جديدة
-    if (newAnswers.length > 0) {
-      const { error: insertErr } = await supabase
-        .from('exam_answers')
-        .insert(newAnswers);
-      if (insertErr) throw insertErr;
-    }
-
-    // تحديث إجابات موجودة
-    for (const update of answersToUpdate) {
-      const { error: updateErr } = await supabase
-        .from('exam_answers')
-        .update({ selected_answer: update.selected_answer })
-        .eq('attempt_id', update.attempt_id)
-        .eq('question_id', update.question_id);
-      if (updateErr) throw updateErr;
-    }
-
-    // 4) حساب الدرجة والنسبة
-    let score = 0;
-    let totalMarks = Number(takingExam.total_marks) || 0;
-
-    // لو total_marks مش متسجل، احسبه من مجموع marks للأسئلة
-    if (!totalMarks) {
-      totalMarks = qs.reduce((s, q) => s + Number(q.marks || 1), 0);
-    }
-
-    console.log('📊 بدء حساب الدرجات:');
-    console.log('  إجمالي الدرجات:', totalMarks);
-
-    qs.forEach(q => {
-      let studentAns = (takingAnswers[q.id] || '').toString().toUpperCase().trim();
-      let correctAns = (q.correct_answer || '').toString().toUpperCase().trim();
-
-      // ✅ معالجة خاصة لأسئلة True/False
-      if (q.question_type === 'true_false') {
-        // تحويل TRUE/FALSE لـ A/B للمقارنة مع قاعدة البيانات القديمة
-        if (studentAns === 'TRUE') studentAns = 'A';
-        if (studentAns === 'FALSE') studentAns = 'B';
-        
-        // لو correct_answer = TRUE/FALSE، حولهم لـ A/B
-        if (correctAns === 'TRUE' || correctAns === 'T' || correctAns === '1') correctAns = 'A';
-        if (correctAns === 'FALSE' || correctAns === 'F' || correctAns === '0') correctAns = 'B';
+        if (insertErr) throw insertErr;
       }
 
-      const isCorrect = studentAns && studentAns === correctAns;
-      const questionMarks = Number(q.marks || 1);
+      // ✅ حساب الدرجة
+      let score = 0;
+      qs.forEach(q => {
+        const studentAnswer = (takingAnswers[q.id] || '').toString().toUpperCase();
+        const correctAnswer = (q.correct_answer || '').toString().toUpperCase();
 
-      // طباعة تفاصيل كل سؤال
-      console.log(`  السؤال ${q.question_order}:`, {
-        نوع: q.question_type,
-        'إجابة الطالب (أصلية)': takingAnswers[q.id],
-        'إجابة الطالب (معالجة)': studentAns,
-        'الإجابة الصحيحة (أصلية)': q.correct_answer,
-        'الإجابة الصحيحة (معالجة)': correctAns,
-        'هل متطابقة؟': isCorrect ? '✅ نعم' : '❌ لا',
-        الدرجات: isCorrect ? `+${questionMarks}` : '0'
+        if (studentAnswer && studentAnswer === correctAnswer) {
+          score += Number(q.marks || 1);
+        }
       });
 
-      if (isCorrect) {
-        score += questionMarks;
-      }
-    });
+      const percentage = (score / attempt.total_marks) * 100;
 
-    const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
+      const { error: updateErr } = await supabase
+        .from('exam_attempts')
+        .update({
+          status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          score: score,
+          percentage: percentage
+        })
+        .eq('id', attempt.id);
 
-    console.log('📊 النتيجة النهائية:');
-    console.log('  الدرجة:', score, '/', totalMarks);
-    console.log('  النسبة:', percentage.toFixed(2), '%');
+      if (updateErr) throw updateErr;
 
-    // 5) تحديث attempt بالنتيجة والحالة ووقت التسليم
-    const { error: updateAttemptErr } = await supabase
-      .from('exam_attempts')
-      .update({
-        status: 'submitted',
-        submitted_at: new Date().toISOString(),
-        score: score,
-        percentage: percentage,
-      })
-      .eq('id', takingExam.id);
+      setTakingExam(null);
+      setTakingAnswers({});
+      fetchExams();
+      toast.info('انتهى الوقت — تم تسليم الامتحان تلقائياً');
+    } catch (err) {
+      console.error('خطأ في التسليم التلقائي:', err);
+      toast.error('فشل التسليم التلقائي');
+    }
+  };
 
-    if (updateAttemptErr) throw updateAttemptErr;
+// توحيد الإجابات قبل الحفظ
+const normalizeAnswer = (q: any, raw: any): string | null => {
+  if (raw === undefined || raw === null) return null;
+  const val = raw.toString().trim();
 
-    // 6) تنظيف حالة الامتحان في الواجهة
-    if (timerRef.current) clearInterval(timerRef.current);
-    setTakingExam(null);
-    setTakingAnswers({});
+  // خرائط مساعدة
+  const arLetterToKey: Record<string, string> = {
+    'أ': 'A', 'ا': 'A',
+    'ب': 'B',
+    'ج': 'C',
+    'د': 'D',
+  };
 
-    // رسالة نجاح محسّنة
-    const passMarks = Number(takingExam.pass_marks) || (totalMarks * 0.5);
-    const isPassed = score >= passMarks;
+  const tfTrue = new Set(['TRUE','T','1','صح','صحيح','نعم','yes','y','✅']);
+  const tfFalse = new Set(['FALSE','F','0','خطأ','لا','no','n','❌']);
 
-    toast.success(
-      `تم تسليم الامتحان بنجاح!\n` +
-      ` لمعرف النتيجه حمل النتيجة` +
-      `}`,
-      { autoClose: 5000 }
-    );
+  // نوع السؤال
+  const qtype = (q.question_type || 'multiple_choice').toLowerCase();
 
-    await fetchExams();
-
-  } catch (err) {
-    console.error('خطأ في تسليم الامتحان:', err);
-    toast.error('حدث خطأ أثناء تسليم الامتحان: ' + (err.message || ''));
+  if (qtype === 'true_false') {
+    const up = val.toUpperCase();
+    if (tfTrue.has(up) || tfTrue.has(val)) return 'TRUE';
+    if (tfFalse.has(up) || tfFalse.has(val)) return 'FALSE';
+    return up; // fallback
   }
+
+  // multiple_choice
+  const up = val.toUpperCase();
+
+  // 1) لو بالفعل A/B/C/D
+  if (['A','B','C','D'].includes(up)) return up;
+
+  // 2) لو حرف عربي
+  if (arLetterToKey[val]) return arLetterToKey[val];
+
+  // 3) لو نص الخيار نفسه → حوّله لمفتاحه
+  const a = (q.option_a ?? '').toString().trim();
+  const b = (q.option_b ?? '').toString().trim();
+  const c = (q.option_c ?? '').toString().trim();
+  const d = (q.option_d ?? '').toString().trim();
+  if (val === a) return 'A';
+  if (val === b) return 'B';
+  if (val === c) return 'C';
+  if (val === d) return 'D';
+
+  // 4) لو وصلنا هنا، رجّع النسخة الموحّدة قدر الإمكان
+  return up;
 };
+
+
+  const submitExamManually = async () => {
+    if (!takingExam) return;
+
+    try {
+      console.log('🚀 بدء عملية تسليم الامتحان...');
+      console.log('📝 معرف المحاولة:', takingExam.id);
+
+      // 1) جلب أسئلة الامتحان بالترتيب
+      const { data: questions, error: qErr } = await supabase
+        .from('exam_questions')
+        .select('*')
+        .eq('exam_id', takingExam.exam_id)
+        .order('question_order', { ascending: true });
+
+      if (qErr) throw qErr;
+      if (!questions || questions.length === 0) {
+        throw new Error('لم يتم العثور على أسئلة للامتحان');
+      }
+
+      console.log('📚 عدد الأسئلة:', questions.length);
+
+      // 2) قراءة الإجابات الموجودة (إن وجدت)
+      const { data: existingAnswers } = await supabase
+        .from('exam_answers')
+        .select('question_id, selected_answer')
+        .eq('attempt_id', takingExam.id);
+
+      const existingAnswersMap = new Map(
+        (existingAnswers || []).map(a => [a.question_id, a.selected_answer])
+      );
+
+      console.log('💾 الإجابات الموجودة مسبقًا:', existingAnswers?.length || 0);
+
+      // 3) تحضير إدخالات/تحديثات الإجابات
+      // 3) تحضير إدخالات/تحديثات الإجابات
+const newAnswers: any[] = [];
+const answersToUpdate: any[] = [];
+let answeredCount = 0;
+
+questions.forEach(q => {
+  const studentAnswerRaw = takingAnswers[q.id];
+  if (studentAnswerRaw === undefined || studentAnswerRaw === null || studentAnswerRaw === '') return;
+
+  // ✅ تطبيع الإجابة
+  const answerToStore = normalizeAnswer(q, studentAnswerRaw);
+  if (!answerToStore) return;
+
+  answeredCount++;
+
+  const existingAnswer = existingAnswersMap.get(q.id);
+  if (!existingAnswer) {
+    newAnswers.push({
+      attempt_id: takingExam.id,
+      question_id: q.id,
+      selected_answer: answerToStore,
+    });
+  } else if (existingAnswer !== answerToStore) {
+    answersToUpdate.push({
+      question_id: q.id,
+      attempt_id: takingExam.id,
+      selected_answer: answerToStore,
+    });
+  }
+});
+
+      console.log('✍ عدد الأسئلة المجابة:', answeredCount);
+      console.log('➕ إجابات جديدة:', newAnswers.length);
+      console.log('🔄 إجابات للتحديث:', answersToUpdate.length);
+
+      // ⚠ تحذير إذا لم يتم الإجابة على كل الأسئلة
+      if (answeredCount < questions.length) {
+        const unanswered = questions.length - answeredCount;
+        console.warn(`⚠️ تحذير: ${unanswered} سؤال بدون إجابة!`);
+      }
+
+      // إدخال إجابات جديدة
+      if (newAnswers.length > 0) {
+        console.log('📥 حفظ الإجابات الجديدة...');
+        const { error: insertErr } = await supabase
+          .from('exam_answers')
+          .insert(newAnswers);
+        if (insertErr) throw insertErr;
+        console.log('✅ تم حفظ الإجابات الجديدة');
+      }
+
+      // تحديث إجابات موجودة
+      if (answersToUpdate.length > 0) {
+        console.log('🔄 تحديث الإجابات الموجودة...');
+        for (const update of answersToUpdate) {
+          const { error: updateErr } = await supabase
+            .from('exam_answers')
+            .update({ selected_answer: update.selected_answer })
+            .eq('attempt_id', update.attempt_id)
+            .eq('question_id', update.question_id);
+          if (updateErr) throw updateErr;
+        }
+        console.log('✅ تم تحديث الإجابات');
+      }
+
+      // 4) حساب الدرجة والنسبة يدويًا (قبل التسليم)
+      let score = 0;
+      let totalMarks = Number(takingExam.total_marks) || 0;
+
+      // لو total_marks مش متسجل، احسبه من مجموع marks للأسئلة
+      if (!totalMarks) {
+        totalMarks = questions.reduce((sum, q) => sum + Number(q.marks || 1), 0);
+      }
+
+      console.log('📊 بدء حساب الدرجات:');
+      console.log('  إجمالي الدرجات:', totalMarks);
+
+      const gradingDetails = [];
+
+      questions.forEach(q => {
+        let studentAns = (takingAnswers[q.id] || '').toString().toUpperCase().trim();
+        let correctAns = (q.correct_answer || '').toString().toUpperCase().trim();
+
+        // ✅ معالجة خاصة لأسئلة True/False
+        if (q.question_type === 'true_false') {
+          // تحويل TRUE/FALSE لـ A/B للمقارنة مع قاعدة البيانات القديمة
+          const originalStudent = studentAns;
+          const originalCorrect = correctAns;
+
+          if (studentAns === 'TRUE' || studentAns === 'T' || studentAns === '1') studentAns = 'A';
+          if (studentAns === 'FALSE' || studentAns === 'F' || studentAns === '0') studentAns = 'B';
+
+          if (correctAns === 'TRUE' || correctAns === 'T' || correctAns === '1') correctAns = 'A';
+          if (correctAns === 'FALSE' || correctAns === 'F' || correctAns === '0') correctAns = 'B';
+
+          console.log(`  🔄 تحويل سؤال ${q.question_order}:`, {
+            'إجابة الطالب': `${originalStudent} → ${studentAns}`,
+            'الإجابة الصحيحة': `${originalCorrect} → ${correctAns}`
+          });
+
+        }
+
+        const isCorrect = studentAns && studentAns === correctAns;
+        const questionMarks = Number(q.marks || 1);
+
+        gradingDetails.push({
+          order: q.question_order,
+          type: q.question_type,
+          studentAnswer: takingAnswers[q.id] || 'لم يجب',
+          correctAnswer: q.correct_answer,
+          isCorrect,
+          marks: isCorrect ? questionMarks : 0,
+          totalMarks: questionMarks
+        });
+
+        if (isCorrect) {
+          score += questionMarks;
+        }
+      });
+
+      // طباعة تفاصيل التصحيح
+      console.table(gradingDetails);
+
+      const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
+
+      console.log('📊 النتيجة النهائية:');
+      console.log('  ✅ الدرجة:', score, '/', totalMarks);
+      console.log('  📈 النسبة:', percentage.toFixed(2), '%');
+
+      // 5) تحديث attempt بالنتيجة والحالة ووقت التسليم
+      console.log('💾 حفظ النتيجة في قاعدة البيانات...');
+
+  const { error: updateAttemptErr } = await supabase
+  .from('exam_attempts')
+  .update({
+    status: 'submitted',
+    submitted_at: new Date().toISOString(),
+    // 👇 مهم: لا تكتب score/percentage هنا من الواجهة
+    is_graded: false, // سيصير TRUE بعد التصحيح السيرفري
+  })
+  .eq('id', takingExam.id);
+
+if (updateAttemptErr) throw updateAttemptErr;
+
+      console.log('✅ تم حفظ النتيجة بنجاح!');
+
+      // 6) التحقق من النتيجة (اختياري - للتأكد)
+      const { data: verifyResult } = await supabase
+        .from('exam_attempts')
+        .select('score, percentage, is_graded')
+        .eq('id', takingExam.id)
+        .single();
+
+      console.log('🔍 التحقق من النتيجة المحفوظة:', verifyResult);
+
+      // 7) تنظيف حالة الامتحان في الواجهة
+      if (timerRef.current) clearInterval(timerRef.current);
+      setTakingExam(null);
+      setTakingAnswers({});
+
+      // 8) رسالة نجاح محسّنة
+      const passMarks = Number(takingExam.pass_marks) || (totalMarks * 0.5);
+      const isPassed = score >= passMarks;
+
+      toast.success(
+        `✅ تم تسليم الامتحان بنجاح!
+
+📊 النتيجة: ${score}/${totalMarks} (${percentage.toFixed(1)}%)
+${isPassed ? '🎉 مبروك! لقد نجحت' : '📚 للأسف لم تنجح هذه المرة'}
+
+يمكنك الاطلاع على التفاصيل في صفحة النتائج`
+      );
+
+
+      // 9) إعادة تحميل قائمة الامتحانات
+      await fetchExams();
+
+      console.log('✅ اكتملت عملية التسليم بنجاح!');
+
+    } catch (err) {
+      console.error('❌ خطأ في تسليم الامتحان:', err);
+      toast.error('حدث خطأ أثناء تسليم الامتحان: ' + (err.message || ''), {
+        autoClose: 5000
+      });
+    }
+  };
+
+  // ✅ دالة اختيارية لإعادة حساب النتيجة من الخادم
+  const recalculateScore = async (attemptId: string) => {
+    try {
+      console.log('🔄 إعادة حساب النتيجة من الخادم...');
+
+    // 5.1) استدعاء التصحيح السيرفري
+const { data: recalcData, error: recalcErr } = await supabase
+  .rpc('calculate_exam_score', { attempt_id_param: takingExam.id });
+
+if (recalcErr) throw recalcErr;
+console.log('✅ إعادة الحساب من السيرفر:', recalcData);
+
+
+      toast.success('تم إعادة حساب النتيجة بنجاح!');
+
+      return data;
+    } catch (err) {
+      console.error('❌ خطأ في إعادة الحساب:', err);
+      toast.error('فشل إعادة حساب النتيجة');
+    }
+  };
+
+  // ✅ دالة للتحقق من حالة التصحيح
+  const checkGradingStatus = async (attemptId: string) => {
+  const { data: verifyResult, error: verifyErr } = await supabase
+  .from('exam_attempts')
+  .select('score, percentage, is_graded')
+  .eq('id', takingExam.id)
+  .single();
+
+if (verifyErr) throw verifyErr;
+console.log('🔍 النتيجة من قاعدة البيانات:', verifyResult);
+    if (error) {
+      console.error('خطأ في جلب حالة التصحيح:', error);
+      return null;
+    }
+
+    return {
+      'الحالة': data.status,
+      'تم التصحيح': data.is_graded ? 'نعم ✅' : 'لا ❌',
+      'الدرجة': data.score !== null ? `${data.score}` : 'غير محسوبة',
+      'النسبة': data.percentage !== null ? `${data.percentage}%` : 'غير محسوبة'
+    };
+  };
+
 
   const updateTakingAnswer = (questionId, answer) => {
     setTakingAnswers(prev => ({
@@ -807,18 +968,18 @@ const submitExamManually = async () => {
   };
 
   const addQuestion = () => {
-  setQuestions(prev => [...prev, {
-    question_text: '',
-    question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
-    option_a: '',
-    option_b: '',
-    option_c: '',
-    option_d: '',
-    correct_answer: 'A',
-    marks: 1
-  }]);
-  setNumQuestions(prev => prev + 1);
-};
+    setQuestions(prev => [...prev, {
+      question_text: '',
+      question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
+      option_a: '',
+      option_b: '',
+      option_c: '',
+      option_d: '',
+      correct_answer: 'A',
+      marks: 1
+    }]);
+    setNumQuestions(prev => prev + 1);
+  };
 
   const removeQuestion = (index) => {
     if (questions.length > 1) {
@@ -853,16 +1014,16 @@ const submitExamManually = async () => {
       end_date: '',
       is_active: true
     });
- setQuestions([{
-  question_text: '',
-  question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
-  option_a: '',
-  option_b: '',
-  option_c: '',
-  option_d: '',
-  correct_answer: 'A',
-  marks: 1
-}]);
+    setQuestions([{
+      question_text: '',
+      question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
+      option_a: '',
+      option_b: '',
+      option_c: '',
+      option_d: '',
+      correct_answer: 'A',
+      marks: 1
+    }]);
     setNumQuestions(1);
   };
 
@@ -870,17 +1031,17 @@ const submitExamManually = async () => {
     if (exam) {
       setEditingExam(exam);
       setExamForm({
-      title: exam.title || '',
-  description: exam.description || '',
-  month: exam.month || '',
-  subject: exam.subject || '',
-  level_scope: exam.level_scope || 'shared', // ✅ إضافة
-  duration_minutes: exam.duration_minutes || DEFAULT_DURATION_MIN,
-  total_marks: exam.total_marks || 100,
-  pass_marks: exam.pass_marks || 50,
-  start_date: isoToInput(exam.start_date || null),
-  end_date: isoToInput(exam.end_date || null),
-  is_active: exam.is_active ?? true
+        title: exam.title || '',
+        description: exam.description || '',
+        month: exam.month || '',
+        subject: exam.subject || '',
+        level_scope: exam.level_scope || 'shared', // ✅ إضافة
+        duration_minutes: exam.duration_minutes || DEFAULT_DURATION_MIN,
+        total_marks: exam.total_marks || 100,
+        pass_marks: exam.pass_marks || 50,
+        start_date: isoToInput(exam.start_date || null),
+        end_date: isoToInput(exam.end_date || null),
+        is_active: exam.is_active ?? true
       });
       loadExamQuestions(exam.id);
     } else {
@@ -892,26 +1053,26 @@ const submitExamManually = async () => {
   // ✅ إضافة state جديد لتخزين المستوى واختيار النافذة
 
 
-// ✅ تعديل useEffect لعرض النافذة للطالب فقط
-useEffect(() => {
-  if (currentUser && userRole !== 'admin' && !selectedLevel) {
-    setShowLevelSelector(true);
-  }
-}, [currentUser, userRole, selectedLevel]);
+  // ✅ تعديل useEffect لعرض النافذة للطالب فقط
+  useEffect(() => {
+    if (currentUser && userRole !== 'admin' && !selectedLevel) {
+      setShowLevelSelector(true);
+    }
+  }, [currentUser, userRole, selectedLevel]);
 
-// ✅ تعديل filterAndPaginateExams لتطبيق فلتر المستوى المحفوظ
-useEffect(() => {
-  filterAndPaginateExams();
-}, [exams, searchTerm, filterMonth, filterSubject, filterStatus, activeTab, currentPage, selectedLevel, userRole]);
+  // ✅ تعديل filterAndPaginateExams لتطبيق فلتر المستوى المحفوظ
+  useEffect(() => {
+    filterAndPaginateExams();
+  }, [exams, searchTerm, filterMonth, filterSubject, filterStatus, activeTab, currentPage, selectedLevel, userRole]);
 
-// ✅ دالة لحفظ المستوى وإخفاء النافذة
-const handleLevelSelection = (level) => {
-  setSelectedLevel(level);
-  setActiveTab(level); // ✅ مهم جداً - عشان يشتغل الفلتر
-  setShowLevelSelector(false);
-  setCurrentPage(1);
-  toast.success(`تم اختيار ${level === 'level1' ? 'المستوى الأول' : 'التمهيدي'} بنجاح`);
-};
+  // ✅ دالة لحفظ المستوى وإخفاء النافذة
+  const handleLevelSelection = (level) => {
+    setSelectedLevel(level);
+    setActiveTab(level); // ✅ مهم جداً - عشان يشتغل الفلتر
+    setShowLevelSelector(false);
+    setCurrentPage(1);
+    toast.success(`تم اختيار ${level === 'level1' ? 'المستوى الأول' : 'التمهيدي'} بنجاح`);
+  };
 
   const loadExamQuestions = async (examId) => {
     try {
@@ -923,16 +1084,16 @@ const handleLevelSelection = (level) => {
 
       if (error) throw error;
       if (data && data.length) {
-setQuestions(data.map(d => ({
-  question_text: d.question_text,
-  question_type: d.question_type || 'multiple_choice', // ✅ إضافة نوع السؤال
-  option_a: d.option_a,
-  option_b: d.option_b,
-  option_c: d.option_c,
-  option_d: d.option_d,
-  correct_answer: d.correct_answer || 'A',
-  marks: Number(d.marks || 1)
-})));
+        setQuestions(data.map(d => ({
+          question_text: d.question_text,
+          question_type: d.question_type || 'multiple_choice', // ✅ إضافة نوع السؤال
+          option_a: d.option_a,
+          option_b: d.option_b,
+          option_c: d.option_c,
+          option_d: d.option_d,
+          correct_answer: d.correct_answer || 'A',
+          marks: Number(d.marks || 1)
+        })));
         setNumQuestions(data.length);
       } else {
         setQuestions([{
@@ -981,60 +1142,60 @@ setQuestions(data.map(d => ({
       </div>
     );
   }
-// 1) محاولاتي المكتملة
-const getMyCompletedAttempts = () => {
-  return exams
-    .map(ex => {
-      const att = studentAttempts[ex.id];
-      if (att && att.status === 'submitted') return { exam: ex, att };
-      return null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => new Date(a.att.submitted_at || 0) - new Date(b.att.submitted_at || 0));
-};
+  // 1) محاولاتي المكتملة
+  const getMyCompletedAttempts = () => {
+    return exams
+      .map(ex => {
+        const att = studentAttempts[ex.id];
+        if (att && att.status === 'submitted') return { exam: ex, att };
+        return null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(a.att.submitted_at || 0) - new Date(b.att.submitted_at || 0));
+  };
 
-// 2) ظهور الزر بعد ساعتين
-const isCertificateAvailable = () => {
-  const rows = getMyCompletedAttempts();
-  if (rows.length === 0) return false;
-  return rows.some(r => canViewResult(r.att)); // يعتمد على RESULT_VISIBILITY_HOURS = 2
-};
-
-// 3) ملخص إجمالي
-const summarizeCompletedAttempts = (rows) => {
-  const totalMarks = rows.reduce((s, r) => s + Number(r.exam.total_marks || 0), 0);
-  const totalScore = rows.reduce((s, r) => s + Number(r.att.score || 0), 0);
-  const percentage = totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0;
-  return { totalMarks, totalScore, percentage: Number(percentage.toFixed(1)) };
-};
-
-// 4) توليد الشهادة
-const generateAllExamsCertificate = async () => {
-  try {
-    setIsCertGenerating(true);
+  // 2) ظهور الزر بعد ساعتين
+  const isCertificateAvailable = () => {
     const rows = getMyCompletedAttempts();
-    if (rows.length === 0) { toast.error('لا توجد امتحانات مكتملة لديك بعد.'); return; }
-    if (!rows.some(r => canViewResult(r.att))) { toast.info('الشهادة ستتاح بعد مرور ساعتين من تسليم أول امتحان.'); return; }
+    if (rows.length === 0) return false;
+    return rows.some(r => canViewResult(r.att)); // يعتمد على RESULT_VISIBILITY_HOURS = 2
+  };
 
-    const sum = summarizeCompletedAttempts(rows);
-    const serial = `RL-ALL-${new Date().toISOString().slice(0,10)}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
-    const verifyUrl = `https://yourdomain.com/cert/verify?serial=${encodeURIComponent(serial)}`;
-    const qrDataUrl = await QRCode.toDataURL(verifyUrl);
+  // 3) ملخص إجمالي
+  const summarizeCompletedAttempts = (rows) => {
+    const totalMarks = rows.reduce((s, r) => s + Number(r.exam.total_marks || 0), 0);
+    const totalScore = rows.reduce((s, r) => s + Number(r.att.score || 0), 0);
+    const percentage = totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0;
+    return { totalMarks, totalScore, percentage: Number(percentage.toFixed(1)) };
+  };
 
-    const el = certRef.current; if (!el) throw new Error('لم يتم العثور على عنصر القالب');
-    el.querySelector('[data-field="platform"]').textContent = 'واحة العلم التعليمية';
-    el.querySelector('[data-field="student"]').textContent = userName || 'الطالب';
-    el.querySelector('[data-field="date"]').textContent = new Date().toISOString().slice(0,10);
-    el.querySelector('[data-field="serial"]').textContent = serial;
-    el.querySelector('[data-field="qr"]').src = qrDataUrl;
-    el.querySelector('[data-field="total"]').textContent = `${sum.totalScore} / ${sum.totalMarks} (${sum.percentage}%)`;
+  // 4) توليد الشهادة
+  const generateAllExamsCertificate = async () => {
+    try {
+      setIsCertGenerating(true);
+      const rows = getMyCompletedAttempts();
+      if (rows.length === 0) { toast.error('لا توجد امتحانات مكتملة لديك بعد.'); return; }
+      if (!rows.some(r => canViewResult(r.att))) { toast.info('الشهادة ستتاح بعد مرور ساعتين من تسليم أول امتحان.'); return; }
 
-    const tbody = el.querySelector('[data-field="rows"]');
-    tbody.innerHTML = rows.map(({ exam, att }, i) => {
-      const passPct = (exam.pass_marks / (exam.total_marks || 1)) * 100;
-      const isPass = (att.percentage || 0) >= passPct;
-      const submitted = att.submitted_at ? new Date(att.submitted_at).toLocaleString('ar-EG', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
-      return `
+      const sum = summarizeCompletedAttempts(rows);
+      const serial = `RL-ALL-${new Date().toISOString().slice(0, 10)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      const verifyUrl = `https://yourdomain.com/cert/verify?serial=${encodeURIComponent(serial)}`;
+      const qrDataUrl = await QRCode.toDataURL(verifyUrl);
+
+      const el = certRef.current; if (!el) throw new Error('لم يتم العثور على عنصر القالب');
+      el.querySelector('[data-field="platform"]').textContent = 'واحة العلم التعليمية';
+      el.querySelector('[data-field="student"]').textContent = userName || 'الطالب';
+      el.querySelector('[data-field="date"]').textContent = new Date().toISOString().slice(0, 10);
+      el.querySelector('[data-field="serial"]').textContent = serial;
+      el.querySelector('[data-field="qr"]').src = qrDataUrl;
+      el.querySelector('[data-field="total"]').textContent = `${sum.totalScore} / ${sum.totalMarks} (${sum.percentage}%)`;
+
+      const tbody = el.querySelector('[data-field="rows"]');
+      tbody.innerHTML = rows.map(({ exam, att }, i) => {
+        const passPct = (exam.pass_marks / (exam.total_marks || 1)) * 100;
+        const isPass = (att.percentage || 0) >= passPct;
+        const submitted = att.submitted_at ? new Date(att.submitted_at).toLocaleString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+        return `
         <tr>
           <td style="padding:6px;border:1px solid #ddd;">${i + 1}</td>
           <td style="padding:6px;border:1px solid #ddd;">${exam.title || '-'}</td>
@@ -1045,47 +1206,47 @@ const generateAllExamsCertificate = async () => {
           <td style="padding:6px;border:1px solid #ddd; text-align:center;">${submitted}</td>
         </tr>
       `;
-    }).join('');
+      }).join('');
 
-    const canvas = await html2canvas(el, { scale: 2 });
-    const img = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-    const w = pdf.internal.pageSize.getWidth(); const h = pdf.internal.pageSize.getHeight();
-    pdf.addImage(img, 'PNG', 0, 0, w, h);
-    pdf.save(`certificate-${serial}.pdf`);
-    toast.success('تم تحميل الشهادة بنجاح.');
-  } catch (e) {
-    console.error(e); toast.error('تعذّر توليد الشهادة.');
-  } finally { setIsCertGenerating(false); }
-};
+      const canvas = await html2canvas(el, { scale: 2 });
+      const img = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      const w = pdf.internal.pageSize.getWidth(); const h = pdf.internal.pageSize.getHeight();
+      pdf.addImage(img, 'PNG', 0, 0, w, h);
+      pdf.save(`certificate-${serial}.pdf`);
+      toast.success('تم تحميل الشهادة بنجاح.');
+    } catch (e) {
+      console.error(e); toast.error('تعذّر توليد الشهادة.');
+    } finally { setIsCertGenerating(false); }
+  };
 
   return (
     <AnimatedBackground className="min-h-screen" dir="rtl">
-<div className="min-h-screen flex flex-col px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10 overflow-visible">
-       <ToastContainer 
-  position="top-right" 
-  autoClose={3500}
-  hideProgressBar={false}
-  newestOnTop
-  closeOnClick
-  rtl
-  pauseOnHover
-  draggable
-  enableMultiContainer={false}  // ✅ هذا السطر مهم
-  containerId="main-toast"       // ✅ وهذا
-  style={{ zIndex: 9999 }}
-/>
-       {/* ✅ بانِل حلّ الامتحان داخل الصفحة — بدون نافذة منبثقة */}
-{/* ✅ بانِل حلّ الامتحان داخل الصفحة — بدون نافذة منبثقة */}
-{takingExam && (
-  <div 
-    className="flex-1 overflow-auto animate-fadeIn" 
-    id="exam-taking-panel"
-    style={{
-      animation: 'fadeInDown 0.5s ease-out'
-    }}
-  >
-    <style jsx>{`
+      <div className="min-h-screen flex flex-col px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10 overflow-visible">
+        <ToastContainer
+          position="top-right"
+          autoClose={3500}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl
+          pauseOnHover
+          draggable
+          enableMultiContainer={false}  // ✅ هذا السطر مهم
+          containerId="main-toast"       // ✅ وهذا
+          style={{ zIndex: 9999 }}
+        />
+        {/* ✅ بانِل حلّ الامتحان داخل الصفحة — بدون نافذة منبثقة */}
+        {/* ✅ بانِل حلّ الامتحان داخل الصفحة — بدون نافذة منبثقة */}
+        {takingExam && (
+          <div
+            className="flex-1 overflow-auto animate-fadeIn"
+            id="exam-taking-panel"
+            style={{
+              animation: 'fadeInDown 0.5s ease-out'
+            }}
+          >
+            <style jsx>{`
       @keyframes fadeInDown {
         from {
           opacity: 0;
@@ -1097,262 +1258,253 @@ const generateAllExamsCertificate = async () => {
         }
       }
     `}</style>
-    <div className="max-w-7xl mx-auto">
-      <section className="w-full max-w-5xl mx-auto my-4 sm:my-8" dir="rtl">
-        {/* Header */}
-        <header className="sticky top-0 z-10 rounded-2xl bg-gradient-to-r from-[#665446] to-[#8B7355] text-white shadow-xl overflow-hidden">
-          <div className="px-4 sm:px-6 py-4 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold font-[Almarai] truncate">
-                {takingExam.title}
-              </h2>
-              <p className="text-xs sm:text-sm opacity-90 font-[Almarai]">
-                السؤال {answeredCount} من {totalQuestions}
-              </p>
-            </div>
-
-            <div className="bg-white/15 rounded-xl px-3 sm:px-4 py-2 text-center shrink-0">
-              <Clock className="w-5 h-5 mx-auto mb-1" />
-              <p className="text-lg sm:text-xl font-bold font-mono">
-                {formatTime(timeLeft)}
-              </p>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div className="w-full h-2 bg-white/20">
-            <div
-              className="h-full bg-white transition-all duration-300"
-              style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
-            />
-          </div>
-        </header>
-
-        {/* Body */}
-        <div className="mt-4 sm:mt-6 space-y-6">
-          {(takingExam.questions || []).map((q, idx) => {
-            const questionType = q.question_type || 'multiple_choice';
-            const isTrueFalse = questionType === 'true_false';
-
-            return (
-              <article
-                key={q.id}
-                className="rounded-2xl border-2 border-gray-200 hover:border-[#665446] bg-white p-4 sm:p-5 transition"
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#665446] text-white flex items-center justify-center font-bold text-sm">
-                    {idx + 1}
-                  </span>
-                  <div className="flex-1">
-                    <div className="flex items-start gap-2 mb-1">
-                      <p className="text-base sm:text-lg font-semibold text-gray-800 font-[Almarai] flex-1">
-                        {q.question_text}
+            <div className="max-w-7xl mx-auto">
+              <section className="w-full max-w-5xl mx-auto my-4 sm:my-8" dir="rtl">
+                {/* Header */}
+                <header className="sticky top-0 z-10 rounded-2xl bg-gradient-to-r from-[#665446] to-[#8B7355] text-white shadow-xl overflow-hidden">
+                  <div className="px-4 sm:px-6 py-4 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-xl sm:text-2xl font-bold font-[Almarai] truncate">
+                        {takingExam.title}
+                      </h2>
+                      <p className="text-xs sm:text-sm opacity-90 font-[Almarai]">
+                        السؤال {answeredCount} من {totalQuestions}
                       </p>
-                      <span className={`text-xs px-2 py-1 rounded-lg font-[Almarai] ${
-                        isTrueFalse 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'bg-purple-100 text-purple-700'
-                      }`}>
-                        {isTrueFalse ? 'صح/خطأ' : 'اختيار متعدد'}
-                      </span>
                     </div>
-                    <span className="text-xs sm:text-sm text-gray-500 font-[Almarai]">
-                      ({q.marks} {q.marks === 1 ? 'درجة' : 'درجات'})
-                    </span>
+
+                    <div className="bg-white/15 rounded-xl px-3 sm:px-4 py-2 text-center shrink-0">
+                      <Clock className="w-5 h-5 mx-auto mb-1" />
+                      <p className="text-lg sm:text-xl font-bold font-mono">
+                        {formatTime(timeLeft)}
+                      </p>
+                    </div>
                   </div>
+
+                  {/* Progress */}
+                  <div className="w-full h-2 bg-white/20">
+                    <div
+                      className="h-full bg-white transition-all duration-300"
+                      style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
+                    />
+                  </div>
+                </header>
+
+                {/* Body */}
+                <div className="mt-4 sm:mt-6 space-y-6">
+                  {(takingExam.questions || []).map((q, idx) => {
+                    const questionType = q.question_type || 'multiple_choice';
+                    const isTrueFalse = questionType === 'true_false';
+
+                    return (
+                      <article
+                        key={q.id}
+                        className="rounded-2xl border-2 border-gray-200 hover:border-[#665446] bg-white p-4 sm:p-5 transition"
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#665446] text-white flex items-center justify-center font-bold text-sm">
+                            {idx + 1}
+                          </span>
+                          <div className="flex-1">
+                            <div className="flex items-start gap-2 mb-1">
+                              <p className="text-base sm:text-lg font-semibold text-gray-800 font-[Almarai] flex-1">
+                                {q.question_text}
+                              </p>
+                              <span className={`text-xs px-2 py-1 rounded-lg font-[Almarai] ${isTrueFalse
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-purple-100 text-purple-700'
+                                }`}>
+                                {isTrueFalse ? 'صح/خطأ' : 'اختيار متعدد'}
+                              </span>
+                            </div>
+                            <span className="text-xs sm:text-sm text-gray-500 font-[Almarai]">
+                              ({q.marks} {q.marks === 1 ? 'درجة' : 'درجات'})
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 sm:mr-10">
+                          {isTrueFalse ? (
+                            // True/False Options
+                            <>
+                              <label
+                                className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${takingAnswers[q.id] === 'TRUE'
+                                    ? 'border-green-500 bg-green-50'
+                                    : 'border-gray-300 hover:border-green-500 hover:bg-gray-50'
+                                  }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`question-${q.id}`}
+                                  value="TRUE"
+                                  checked={takingAnswers[q.id] === 'TRUE'}
+                                  onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
+                                  className="w-5 h-5 accent-green-600"
+                                />
+                                <span className="flex items-center gap-2 font-[Almarai]">
+                                  <span className="text-2xl">✓</span>
+                                  <span className="font-bold text-green-700 text-lg">صح</span>
+                                </span>
+                              </label>
+
+                              <label
+                                className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${takingAnswers[q.id] === 'FALSE'
+                                    ? 'border-red-500 bg-red-50'
+                                    : 'border-gray-300 hover:border-red-500 hover:bg-gray-50'
+                                  }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`question-${q.id}`}
+                                  value="FALSE"
+                                  checked={takingAnswers[q.id] === 'FALSE'}
+                                  onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
+                                  className="w-5 h-5 accent-red-600"
+                                />
+                                <span className="flex items-center gap-2 font-[Almarai]">
+                                  <span className="text-2xl">✗</span>
+                                  <span className="font-bold text-red-700 text-lg">خطأ</span>
+                                </span>
+                              </label>
+                            </>
+                          ) : (
+                            // Multiple Choice Options
+                            ENGLISH_OPTIONS.map((opt) => (
+                              <label
+                                key={opt}
+                                className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${takingAnswers[q.id] === opt
+                                    ? 'border-[#665446] bg-[#665446]/10'
+                                    : 'border-gray-300 hover:border-[#665446] hover:bg-gray-50'
+                                  }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`question-${q.id}`}
+                                  value={opt}
+                                  checked={takingAnswers[q.id] === opt}
+                                  onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
+                                  className="w-5 h-5 accent-[#665446]"
+                                />
+                                <span className="flex items-center gap-2 font-[Almarai]">
+                                  <span className="font-bold text-[#665446]">
+                                    {OPTION_DISPLAY[opt]}.
+                                  </span>
+                                  <span className="text-gray-700">
+                                    {q[`option_${opt.toLowerCase()}`]}
+                                  </span>
+                                </span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
 
-                <div className="space-y-3 sm:mr-10">
-                  {isTrueFalse ? (
-                    // True/False Options
-                    <>
-                      <label
-                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${
-                          takingAnswers[q.id] === 'TRUE'
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-300 hover:border-green-500 hover:bg-gray-50'
+                {/* Footer */}
+                <footer className="sticky bottom-4 mt-6">
+                  <div className="bg-white/90 backdrop-blur rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={() => {
+                        if (window.confirm('هل أنت متأكد من إلغاء الامتحان؟ سيتم فقدان جميع الإجابات.')) {
+                          if (timerRef.current) clearInterval(timerRef.current);
+                          setTakingExam(null);
+                          setTakingAnswers({});
+                        }
+                      }}
+                      className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold font-[Almarai] transition"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      onClick={submitExamManually}
+                      disabled={answeredCount === 0}
+                      className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold font-[Almarai] transition ${answeredCount === 0
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-md hover:shadow-lg'
                         }`}
-                      >
-                        <input
-                          type="radio"
-                          name={`question-${q.id}`}
-                          value="TRUE"
-                          checked={takingAnswers[q.id] === 'TRUE'}
-                          onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
-                          className="w-5 h-5 accent-green-600"
-                        />
-                        <span className="flex items-center gap-2 font-[Almarai]">
-                          <span className="text-2xl">✓</span>
-                          <span className="font-bold text-green-700 text-lg">صح</span>
-                        </span>
-                      </label>
-
-                      <label
-                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${
-                          takingAnswers[q.id] === 'FALSE'
-                            ? 'border-red-500 bg-red-50'
-                            : 'border-gray-300 hover:border-red-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={`question-${q.id}`}
-                          value="FALSE"
-                          checked={takingAnswers[q.id] === 'FALSE'}
-                          onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
-                          className="w-5 h-5 accent-red-600"
-                        />
-                        <span className="flex items-center gap-2 font-[Almarai]">
-                          <span className="text-2xl">✗</span>
-                          <span className="font-bold text-red-700 text-lg">خطأ</span>
-                        </span>
-                      </label>
-                    </>
-                  ) : (
-                    // Multiple Choice Options
-                    ENGLISH_OPTIONS.map((opt) => (
-                      <label
-                        key={opt}
-                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${
-                          takingAnswers[q.id] === opt
-                            ? 'border-[#665446] bg-[#665446]/10'
-                            : 'border-gray-300 hover:border-[#665446] hover:bg-gray-50'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={`question-${q.id}`}
-                          value={opt}
-                          checked={takingAnswers[q.id] === opt}
-                          onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
-                          className="w-5 h-5 accent-[#665446]"
-                        />
-                        <span className="flex items-center gap-2 font-[Almarai]">
-                          <span className="font-bold text-[#665446]">
-                            {OPTION_DISPLAY[opt]}.
-                          </span>
-                          <span className="text-gray-700">
-                            {q[`option_${opt.toLowerCase()}`]}
-                          </span>
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <footer className="sticky bottom-4 mt-6">
-          <div className="bg-white/90 backdrop-blur rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row gap-2">
-            <button
-              onClick={() => {
-                if (window.confirm('هل أنت متأكد من إلغاء الامتحان؟ سيتم فقدان جميع الإجابات.')) {
-                  if (timerRef.current) clearInterval(timerRef.current);
-                  setTakingExam(null);
-                  setTakingAnswers({});
-                }
-              }}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold font-[Almarai] transition"
-            >
-              إلغاء
-            </button>
-            <button
-              onClick={submitExamManually}
-              disabled={answeredCount === 0}
-              className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold font-[Almarai] transition ${
-                answeredCount === 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-md hover:shadow-lg'
-              }`}
-            >
-              تسليم الامتحان ({answeredCount}/{totalQuestions})
-            </button>
+                    >
+                      تسليم الامتحان ({answeredCount}/{totalQuestions})
+                    </button>
+                  </div>
+                </footer>
+              </section>
+            </div>
           </div>
-        </footer>
-      </section>
-    </div>
-  </div>
-)}
+        )}
 
 
         <div className="flex-1 overflow-auto">
-  <div className="max-w-7xl mx-auto">
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-      <div>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-2 font-[Almarai]" style={{ color: TEXT_COLOR }}>
-          الامتحانات الشهرية
-        </h1>
-        <p className="text-sm sm:text-base opacity-80 font-[Almarai]" style={{ color: TEXT_COLOR }}>
-          مرحباً {userName} ({userRole === 'admin' ? 'مشرف' : 'طالب'})
-        </p>
-      </div>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <div>
+                <h1 className="text-3xl sm:text-4xl font-bold mb-2 font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                  الامتحانات الشهرية
+                </h1>
+                <p className="text-sm sm:text-base opacity-80 font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                  مرحباً {userName} ({userRole === 'admin' ? 'مشرف' : 'طالب'})
+                </p>
+              </div>
 
-      {/* ✅ تبويبات المستويات للطلاب فقط */}
-{userRole !== 'admin' && (
-  <div className="flex gap-2 bg-white rounded-lg p-1 shadow-md">
-    <button
-      onClick={() => setActiveTab('all')}
-      className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${
-        activeTab === 'all'
-          ? 'bg-[#665446] text-white'
-          : 'bg-transparent text-gray-600 hover:bg-gray-100'
-      }`}
-    >
-      كل الامتحانات
-    </button>
-    <button
-      onClick={() => setActiveTab('level1')}
-      className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${
-        activeTab === 'level1'
-          ? 'bg-[#665446] text-white'
-          : 'bg-transparent text-gray-600 hover:bg-gray-100'
-      }`}
-    >
-      المستوى الأول
-    </button>
-    <button
-      onClick={() => setActiveTab('level2')}
-      className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${
-        activeTab === 'level2'
-          ? 'bg-[#665446] text-white'
-          : 'bg-transparent text-gray-600 hover:bg-gray-100'
-      }`}
-    >
-      التمهيدي
-    </button>
-  </div>
-)}
+              {/* ✅ تبويبات المستويات للطلاب فقط */}
+              {userRole !== 'admin' && (
+                <div className="flex gap-2 bg-white rounded-lg p-1 shadow-md">
+                  <button
+                    onClick={() => setActiveTab('all')}
+                    className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${activeTab === 'all'
+                        ? 'bg-[#665446] text-white'
+                        : 'bg-transparent text-gray-600 hover:bg-gray-100'
+                      }`}
+                  >
+                    كل الامتحانات
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('level1')}
+                    className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${activeTab === 'level1'
+                        ? 'bg-[#665446] text-white'
+                        : 'bg-transparent text-gray-600 hover:bg-gray-100'
+                      }`}
+                  >
+                    المستوى الأول
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('level2')}
+                    className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${activeTab === 'level2'
+                        ? 'bg-[#665446] text-white'
+                        : 'bg-transparent text-gray-600 hover:bg-gray-100'
+                      }`}
+                  >
+                    التمهيدي
+                  </button>
+                </div>
+              )}
 
-      {/* ✅ زر تحميل الشهادة للطالب فقط */}
-      {userRole !== 'admin' && (
-        <button
-          onClick={generateAllExamsCertificate}
-          disabled={!isCertificateAvailable() || isCertGenerating}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold font-[Almarai] transition-all ${
-            (!isCertificateAvailable() || isCertGenerating)
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
-          }`}
-          title="تحميل الشهادة (تظهر بعد مرور ساعتين من أول امتحان مكتمل)"
-        >
-          تحميل الشهادة PDF
-        </button>
-      )}
-      {/* ⬆️ نهاية زر الطالب */}
+              {/* ✅ زر تحميل الشهادة للطالب فقط */}
+              {userRole !== 'admin' && (
+                <button
+                  onClick={generateAllExamsCertificate}
+                  disabled={!isCertificateAvailable() || isCertGenerating}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold font-[Almarai] transition-all ${(!isCertificateAvailable() || isCertGenerating)
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
+                    }`}
+                  title="تحميل الشهادة (تظهر بعد مرور ساعتين من أول امتحان مكتمل)"
+                >
+                  تحميل الشهادة PDF
+                </button>
+              )}
+              {/* ⬆️ نهاية زر الطالب */}
 
-      {userRole === 'admin' && (
-        <button
-          onClick={() => openCreateForm()}
-          className="flex items-center gap-2 px-6 py-3 bg-[#665446] hover:bg-[#8B7355] text-white rounded-lg font-bold font-[Almarai] transition-all shadow-lg hover:shadow-xl"
-        >
-          <Plus className="w-5 h-5" />
-          إنشاء امتحان جديد
-        </button>
-      )}
-    </div>
+              {userRole === 'admin' && (
+                <button
+                  onClick={() => openCreateForm()}
+                  className="flex items-center gap-2 px-6 py-3 bg-[#665446] hover:bg-[#8B7355] text-white rounded-lg font-bold font-[Almarai] transition-all shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                  إنشاء امتحان جديد
+                </button>
+              )}
+            </div>
 
 
             <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
@@ -1495,7 +1647,7 @@ const generateAllExamsCertificate = async () => {
                             </p>
                             {canView ? (
                               <p className="text-xs text-blue-600 font-[Almarai]">
-                                      حمل الشهادة لتعلم نتيجه الاختبار
+                                حمل الشهادة لتعلم نتيجه الاختبار
                               </p>
                             ) : (
                               <p className="text-xs text-blue-600 font-[Almarai]">
@@ -1532,11 +1684,10 @@ const generateAllExamsCertificate = async () => {
                             <button
                               onClick={() => startExam(exam)}
                               disabled={!exam.is_active || hasCompleted}
-                              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold font-[Almarai] transition-all ${
-                                !exam.is_active || hasCompleted
+                              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold font-[Almarai] transition-all ${!exam.is_active || hasCompleted
                                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                   : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-lg hover:shadow-xl'
-                              }`}
+                                }`}
                             >
                               {hasCompleted ? 'تم الإنهاء' : 'بدء الامتحان'}
                             </button>
@@ -1573,427 +1724,427 @@ const generateAllExamsCertificate = async () => {
           </div>
         </div>
 
-{/* ✅ نموذج محدث يدعم أسئلة الاختيار من متعدد وأسئلة صح/خطأ */}
-{showCreateForm && (
-  <section className="max-w-7xl mx-auto mb-8 px-2 sm:px-4" ref={formRef} dir="rtl">
-    <div className="relative rounded-2xl shadow-xl border border-[#E6D9C8] overflow-hidden bg-white/80 backdrop-blur">
-      {/* Header */}
-<header className="sticky top-0 z-20 rounded-2xl bg-gradient-to-r from-[#665446] to-[#8B7355] text-white shadow-xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4">
-          <div className="min-w-0">
-            <h2 className="text-xl sm:text-2xl font-bold font-[Almarai] truncate">
-              {editingExam ? 'تعديل الامتحان' : 'إنشاء امتحان جديد'}
-            </h2>
-            <p className="text-xs sm:text-sm opacity-90 font-[Almarai]">
-              املأ الحقول المطلوبة ثم اضغط حفظ
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setShowCreateForm(false);
-              resetForm();
-              setEditingExam(null);
-            }}
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-3 py-2 hover:bg-white/20 transition"
-            title="إغلاق"
-          >
-            <X className="w-5 h-5" />
-            <span className="hidden sm:inline font-[Almarai]">إغلاق</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Body */}
-      <div className="p-4 sm:p-6">
-        {/* Info Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              عنوان الامتحان *
-            </label>
-            <input
-              type="text"
-              value={examForm.title}
-              onChange={(e) => setExamForm({ ...examForm, title: e.target.value })}
-              placeholder="مثال: امتحان شهر سبتمبر"
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              المادة *
-            </label>
-            <input
-              type="text"
-              value={examForm.subject}
-              onChange={(e) => setExamForm({ ...examForm, subject: e.target.value })}
-              placeholder="مثال: الرياضيات"
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              الشهر *
-            </label>
-            <input
-              type="text"
-              value={examForm.month}
-              onChange={(e) => setExamForm({ ...examForm, month: e.target.value })}
-              placeholder="مثال: سبتمبر"
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
- <div className="space-y-2">
-  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-    المستوى *
-  </label>
-  <select
-    value={examForm.level_scope}
-    onChange={(e) => setExamForm({ ...examForm, level_scope: e.target.value })}
-    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-  >
-    <option value="shared">مشترك (كل المستويات)</option>
-    <option value="level1">المستوى الأول</option>
-    <option value="level2">التمهيدي</option>
-  </select>
-</div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              المدة (بالدقائق)
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={examForm.duration_minutes}
-              onChange={(e) => setExamForm({ ...examForm, duration_minutes: e.target.value })}
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              الدرجة الكلية
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={examForm.total_marks}
-              onChange={(e) => setExamForm({ ...examForm, total_marks: e.target.value })}
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              درجة النجاح
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={examForm.pass_marks}
-              onChange={(e) => setExamForm({ ...examForm, pass_marks: e.target.value })}
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              تاريخ البدء *
-            </label>
-            <input
-              type="datetime-local"
-              required
-              value={examForm.start_date}
-              onChange={(e) => setExamForm({ ...examForm, start_date: e.target.value })}
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              تاريخ الانتهاء *
-            </label>
-            <input
-              type="datetime-local"
-              required
-              min={examForm.start_date || undefined}
-              value={examForm.end_date}
-              onChange={(e) => setExamForm({ ...examForm, end_date: e.target.value })}
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-          </div>
-        </div>
-
-        {/* Description + Toggle */}
-        <div className="mt-4 grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <div className="xl:col-span-2 space-y-2">
-            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              الوصف
-            </label>
-            <textarea
-              rows={3}
-              value={examForm.description}
-              onChange={(e) => setExamForm({ ...examForm, description: e.target.value })}
-              placeholder="وصف مختصر للامتحان..."
-              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-          </div>
-
-          <div className="flex items-center justify-between xl:justify-start xl:gap-4 rounded-xl border-2 border-gray-200/80 bg-gray-50 px-4 py-3">
-            <label htmlFor="is_active" className="text-sm font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              تفعيل الامتحان
-            </label>
-            <input
-              id="is_active"
-              type="checkbox"
-              checked={examForm.is_active}
-              onChange={(e) => setExamForm({ ...examForm, is_active: e.target.checked })}
-              className="h-5 w-5 accent-[#665446]"
-            />
-          </div>
-        </div>
-
-        {/* Questions Header */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <h3 className="text-lg sm:text-xl font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-            الأسئلة
-          </h3>
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-[Almarai]" style={{ color: TEXT_COLOR }}>
-              عدد الأسئلة:
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={numQuestions}
-              onChange={(e) => setNumQuestions(e.target.value)}
-              className="w-24 rounded-xl border-2 border-gray-200/80 bg-white px-3 py-2 text-center font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-            />
-            <button
-              onClick={addQuestion}
-              className="inline-flex items-center gap-2 rounded-xl bg-gray-200 hover:bg-gray-300 px-4 py-2 font-bold font-[Almarai] text-gray-800 transition"
-            >
-              <Plus className="w-4 h-4" />
-              إضافة سؤال
-            </button>
-          </div>
-        </div>
-
-        {/* Questions List */}
-        <div className="mt-4 space-y-4">
-          {questions.map((q, index) => (
-            <details key={index} open className="group rounded-2xl border-2 border-gray-200/80 bg-white">
-              <summary className="flex items-center justify-between gap-3 cursor-pointer rounded-2xl px-4 sm:px-5 py-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#665446] text-white font-bold text-sm">
-                    {index + 1}
-                  </span>
-                  <span className="truncate font-[Almarai] text-sm" style={{ color: TEXT_COLOR }}>
-                    {q.question_text?.trim() ? q.question_text : 'سؤال جديد'}
-                  </span>
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg font-[Almarai]">
-                    {q.question_type === 'true_false' ? 'صح/خطأ' : 'اختيار متعدد'}
-                  </span>
+        {/* ✅ نموذج محدث يدعم أسئلة الاختيار من متعدد وأسئلة صح/خطأ */}
+        {showCreateForm && (
+          <section className="max-w-7xl mx-auto mb-8 px-2 sm:px-4" ref={formRef} dir="rtl">
+            <div className="relative rounded-2xl shadow-xl border border-[#E6D9C8] overflow-hidden bg-white/80 backdrop-blur">
+              {/* Header */}
+              <header className="sticky top-0 z-20 rounded-2xl bg-gradient-to-r from-[#665446] to-[#8B7355] text-white shadow-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4">
+                  <div className="min-w-0">
+                    <h2 className="text-xl sm:text-2xl font-bold font-[Almarai] truncate">
+                      {editingExam ? 'تعديل الامتحان' : 'إنشاء امتحان جديد'}
+                    </h2>
+                    <p className="text-xs sm:text-sm opacity-90 font-[Almarai]">
+                      املأ الحقول المطلوبة ثم اضغط حفظ
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      resetForm();
+                      setEditingExam(null);
+                    }}
+                    className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-3 py-2 hover:bg-white/20 transition"
+                    title="إغلاق"
+                  >
+                    <X className="w-5 h-5" />
+                    <span className="hidden sm:inline font-[Almarai]">إغلاق</span>
+                  </button>
                 </div>
-                <div className="flex items-center gap-2">
-                  {questions.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        removeQuestion(index);
-                      }}
-                      className="rounded-lg bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100 transition"
-                      title="حذف السؤال"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                  <span className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-[Almarai] text-gray-600 group-open:rotate-180 transition">
-                    ▼
-                  </span>
-                </div>
-              </summary>
+              </header>
 
-              <div className="px-4 sm:px-5 pb-5 pt-1">
-                <div className="space-y-4">
-                  {/* Question Type Selector */}
+              {/* Body */}
+              <div className="p-4 sm:p-6">
+                {/* Info Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                      نوع السؤال *
+                      عنوان الامتحان *
                     </label>
-                    <select
-                      value={q.question_type || 'multiple_choice'}
-                      onChange={(e) => updateQuestion(index, 'question_type', e.target.value)}
+                    <input
+                      type="text"
+                      value={examForm.title}
+                      onChange={(e) => setExamForm({ ...examForm, title: e.target.value })}
+                      placeholder="مثال: امتحان شهر سبتمبر"
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                    >
-                      <option value="multiple_choice">اختيار من متعدد</option>
-                      <option value="true_false">صح أو خطأ</option>
-                    </select>
+                    />
                   </div>
 
-                  {/* Question Text */}
                   <div className="space-y-2">
                     <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                      نص السؤال *
+                      المادة *
+                    </label>
+                    <input
+                      type="text"
+                      value={examForm.subject}
+                      onChange={(e) => setExamForm({ ...examForm, subject: e.target.value })}
+                      placeholder="مثال: الرياضيات"
+                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      الشهر *
+                    </label>
+                    <input
+                      type="text"
+                      value={examForm.month}
+                      onChange={(e) => setExamForm({ ...examForm, month: e.target.value })}
+                      placeholder="مثال: سبتمبر"
+                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    />
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                        المستوى *
+                      </label>
+                      <select
+                        value={examForm.level_scope}
+                        onChange={(e) => setExamForm({ ...examForm, level_scope: e.target.value })}
+                        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                      >
+                        <option value="shared">مشترك (كل المستويات)</option>
+                        <option value="level1">المستوى الأول</option>
+                        <option value="level2">التمهيدي</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      المدة (بالدقائق)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={examForm.duration_minutes}
+                      onChange={(e) => setExamForm({ ...examForm, duration_minutes: e.target.value })}
+                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      الدرجة الكلية
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={examForm.total_marks}
+                      onChange={(e) => setExamForm({ ...examForm, total_marks: e.target.value })}
+                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      درجة النجاح
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={examForm.pass_marks}
+                      onChange={(e) => setExamForm({ ...examForm, pass_marks: e.target.value })}
+                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      تاريخ البدء *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={examForm.start_date}
+                      onChange={(e) => setExamForm({ ...examForm, start_date: e.target.value })}
+                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      تاريخ الانتهاء *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      min={examForm.start_date || undefined}
+                      value={examForm.end_date}
+                      onChange={(e) => setExamForm({ ...examForm, end_date: e.target.value })}
+                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Description + Toggle */}
+                <div className="mt-4 grid grid-cols-1 xl:grid-cols-3 gap-4">
+                  <div className="xl:col-span-2 space-y-2">
+                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      الوصف
                     </label>
                     <textarea
-                      rows={2}
-                      value={q.question_text}
-                      onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
-                      placeholder="اكتب السؤال هنا..."
+                      rows={3}
+                      value={examForm.description}
+                      onChange={(e) => setExamForm({ ...examForm, description: e.target.value })}
+                      placeholder="وصف مختصر للامتحان..."
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                     />
                   </div>
 
-                  {/* Options - Show based on question type */}
-                  {q.question_type === 'true_false' ? (
-                    // True/False Options
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                          الإجابة الصحيحة *
-                        </label>
-                        <select
-                          value={q.correct_answer}
-                          onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
-                          className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                        >
-                          <option value="TRUE">✓ صح</option>
-                          <option value="FALSE">✗ خطأ</option>
-                        </select>
-                      </div>
+                  <div className="flex items-center justify-between xl:justify-start xl:gap-4 rounded-xl border-2 border-gray-200/80 bg-gray-50 px-4 py-3">
+                    <label htmlFor="is_active" className="text-sm font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      تفعيل الامتحان
+                    </label>
+                    <input
+                      id="is_active"
+                      type="checkbox"
+                      checked={examForm.is_active}
+                      onChange={(e) => setExamForm({ ...examForm, is_active: e.target.checked })}
+                      className="h-5 w-5 accent-[#665446]"
+                    />
+                  </div>
+                </div>
 
-                      <div className="space-y-2">
-                        <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                          الدرجات
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={q.marks}
-                          onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
-                          className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    // Multiple Choice Options
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                            الخيار أ *
-                          </label>
-                          <input
-                            type="text"
-                            value={q.option_a}
-                            onChange={(e) => updateQuestion(index, 'option_a', e.target.value)}
-                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                            الخيار ب *
-                          </label>
-                          <input
-                            type="text"
-                            value={q.option_b}
-                            onChange={(e) => updateQuestion(index, 'option_b', e.target.value)}
-                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                            الخيار ج *
-                          </label>
-                          <input
-                            type="text"
-                            value={q.option_c}
-                            onChange={(e) => updateQuestion(index, 'option_c', e.target.value)}
-                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                            الخيار د *
-                          </label>
-                          <input
-                            type="text"
-                            value={q.option_d}
-                            onChange={(e) => updateQuestion(index, 'option_d', e.target.value)}
-                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                          />
-                        </div>
-                      </div>
+                {/* Questions Header */}
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <h3 className="text-lg sm:text-xl font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                    الأسئلة
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                      عدد الأسئلة:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={numQuestions}
+                      onChange={(e) => setNumQuestions(e.target.value)}
+                      className="w-24 rounded-xl border-2 border-gray-200/80 bg-white px-3 py-2 text-center font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                    />
+                    <button
+                      onClick={addQuestion}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gray-200 hover:bg-gray-300 px-4 py-2 font-bold font-[Almarai] text-gray-800 transition"
+                    >
+                      <Plus className="w-4 h-4" />
+                      إضافة سؤال
+                    </button>
+                  </div>
+                </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                            الإجابة الصحيحة *
-                          </label>
-                          <select
-                            value={q.correct_answer}
-                            onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
-                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                          >
-                            {ENGLISH_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {OPTION_DISPLAY[opt]}
-                              </option>
-                            ))}
-                          </select>
+                {/* Questions List */}
+                <div className="mt-4 space-y-4">
+                  {questions.map((q, index) => (
+                    <details key={index} open className="group rounded-2xl border-2 border-gray-200/80 bg-white">
+                      <summary className="flex items-center justify-between gap-3 cursor-pointer rounded-2xl px-4 sm:px-5 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#665446] text-white font-bold text-sm">
+                            {index + 1}
+                          </span>
+                          <span className="truncate font-[Almarai] text-sm" style={{ color: TEXT_COLOR }}>
+                            {q.question_text?.trim() ? q.question_text : 'سؤال جديد'}
+                          </span>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg font-[Almarai]">
+                            {q.question_type === 'true_false' ? 'صح/خطأ' : 'اختيار متعدد'}
+                          </span>
                         </div>
+                        <div className="flex items-center gap-2">
+                          {questions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                removeQuestion(index);
+                              }}
+                              className="rounded-lg bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100 transition"
+                              title="حذف السؤال"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <span className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-[Almarai] text-gray-600 group-open:rotate-180 transition">
+                            ▼
+                          </span>
+                        </div>
+                      </summary>
 
-                        <div className="space-y-2">
-                          <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                            الدرجات
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={q.marks}
-                            onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
-                            className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                          />
+                      <div className="px-4 sm:px-5 pb-5 pt-1">
+                        <div className="space-y-4">
+                          {/* Question Type Selector */}
+                          <div className="space-y-2">
+                            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                              نوع السؤال *
+                            </label>
+                            <select
+                              value={q.question_type || 'multiple_choice'}
+                              onChange={(e) => updateQuestion(index, 'question_type', e.target.value)}
+                              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                            >
+                              <option value="multiple_choice">اختيار من متعدد</option>
+                              <option value="true_false">صح أو خطأ</option>
+                            </select>
+                          </div>
+
+                          {/* Question Text */}
+                          <div className="space-y-2">
+                            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                              نص السؤال *
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={q.question_text}
+                              onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
+                              placeholder="اكتب السؤال هنا..."
+                              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                            />
+                          </div>
+
+                          {/* Options - Show based on question type */}
+                          {q.question_type === 'true_false' ? (
+                            // True/False Options
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                  الإجابة الصحيحة *
+                                </label>
+                                <select
+                                  value={q.correct_answer}
+                                  onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
+                                  className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                >
+                                  <option value="TRUE">✓ صح</option>
+                                  <option value="FALSE">✗ خطأ</option>
+                                </select>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                  الدرجات
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={q.marks}
+                                  onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
+                                  className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            // Multiple Choice Options
+                            <>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    الخيار أ *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.option_a}
+                                    onChange={(e) => updateQuestion(index, 'option_a', e.target.value)}
+                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    الخيار ب *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.option_b}
+                                    onChange={(e) => updateQuestion(index, 'option_b', e.target.value)}
+                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    الخيار ج *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.option_c}
+                                    onChange={(e) => updateQuestion(index, 'option_c', e.target.value)}
+                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    الخيار د *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.option_d}
+                                    onChange={(e) => updateQuestion(index, 'option_d', e.target.value)}
+                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    الإجابة الصحيحة *
+                                  </label>
+                                  <select
+                                    value={q.correct_answer}
+                                    onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
+                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  >
+                                    {ENGLISH_OPTIONS.map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {OPTION_DISPLAY[opt]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    الدرجات
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={q.marks}
+                                    onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
+                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </>
-                  )}
+                    </details>
+                  ))}
                 </div>
               </div>
-            </details>
-          ))}
-        </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="sticky bottom-0 z-20 mt-6 bg-white/95 backdrop-blur rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-lg">
-  <div className="flex flex-col sm:flex-row gap-2">
-          <button
-            onClick={() => {
-              setShowCreateForm(false);
-              resetForm();
-              setEditingExam(null);
-            }}
-            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold font-[Almarai] transition"
-          >
-            إلغاء
-          </button>
-          <button
-            onClick={createExam}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#665446] hover:bg-[#8B7355] text-white font-bold font-[Almarai] shadow-md hover:shadow-lg transition"
-          >
-            {editingExam ? 'حفظ التعديلات' : 'إنشاء الامتحان'}
-          </button>
-        </div>
-      </footer>
-    </div>
-  </section>
-)}
+              {/* Footer */}
+              <footer className="sticky bottom-0 z-20 mt-6 bg-white/95 backdrop-blur rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-lg">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      resetForm();
+                      setEditingExam(null);
+                    }}
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold font-[Almarai] transition"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={createExam}
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#665446] hover:bg-[#8B7355] text-white font-bold font-[Almarai] shadow-md hover:shadow-lg transition"
+                  >
+                    {editingExam ? 'حفظ التعديلات' : 'إنشاء الامتحان'}
+                  </button>
+                </div>
+              </footer>
+            </div>
+          </section>
+        )}
 
 
 
@@ -2096,11 +2247,10 @@ const generateAllExamsCertificate = async () => {
                                 {attempt.score || 0} / {selectedExam.total_marks}
                               </td>
                               <td className="px-4 py-3 text-center">
-                                <span className={`px-3 py-1 rounded-full text-sm font-bold font-[Almarai] ${
-                                  (attempt.percentage || 0) >= ((selectedExam.pass_marks / selectedExam.total_marks) * 100)
+                                <span className={`px-3 py-1 rounded-full text-sm font-bold font-[Almarai] ${(attempt.percentage || 0) >= ((selectedExam.pass_marks / selectedExam.total_marks) * 100)
                                     ? 'bg-green-100 text-green-700'
                                     : 'bg-red-100 text-red-700'
-                                }`}>
+                                  }`}>
                                   {(attempt.percentage || 0).toFixed(1)}%
                                 </span>
                               </td>
@@ -2118,14 +2268,14 @@ const generateAllExamsCertificate = async () => {
                                 )}
                               </td>
                               <td className="px-4 py-3 text-center text-sm font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                                {attempt.submitted_at 
+                                {attempt.submitted_at
                                   ? new Date(attempt.submitted_at).toLocaleString('ar-EG', {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
                                   : '-'
                                 }
                               </td>
@@ -2154,97 +2304,97 @@ const generateAllExamsCertificate = async () => {
           </div>
         )}
 
-        
-{/* ✅ قالب الشهادة المخفي للطباعة إلى PDF */}
-<div
-  className="fixed -left-[9999px] -top-[9999px] bg-white"
-  style={{ width: '794px', height: '1123px' }}
-  ref={certRef}
-  dir="rtl"
->
-  <div
-    style={{
-      boxSizing: 'border-box',
-      width: '100%',
-      height: '100%',
-      padding: '26px',
-      border: '8px solid #333',
-      position: 'relative',
-      fontFamily: 'Almarai, Cairo, system-ui, sans-serif',
-      color: '#222'
-    }}
-  >
-    <div style={{ textAlign: 'center', marginTop: 2 }}>
-      <h1 style={{ margin: 0, fontSize: 28 }}>شهادة امتحانات الشهر</h1>
-      <div style={{ marginTop: 4 }}>
-        منصة: <span data-field="platform">—</span>
-      </div>
-    </div>
 
-    <div style={{ textAlign: 'center', margin: '10px 0 12px', lineHeight: 1.6 }}>
-      <div>تُمنح هذه الشهادة إلى</div>
-      <div style={{ fontSize: 24, fontWeight: 'bold' }} data-field="student">—</div>
-      <div style={{ fontSize: 14, color: '#444', marginTop: 4 }}>
-        تشمل الشهادة جميع الامتحانات التي قام الطالب بإتمامها على المنصة.
-      </div>
-      <div style={{ marginTop: 6, fontSize: 14 }}>
-        الإجمالي: <span data-field="total">—</span> — تاريخ الإصدار: <span data-field="date">—</span>
-      </div>
-    </div>
+        {/* ✅ قالب الشهادة المخفي للطباعة إلى PDF */}
+        <div
+          className="fixed -left-[9999px] -top-[9999px] bg-white"
+          style={{ width: '794px', height: '1123px' }}
+          ref={certRef}
+          dir="rtl"
+        >
+          <div
+            style={{
+              boxSizing: 'border-box',
+              width: '100%',
+              height: '100%',
+              padding: '26px',
+              border: '8px solid #333',
+              position: 'relative',
+              fontFamily: 'Almarai, Cairo, system-ui, sans-serif',
+              color: '#222'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginTop: 2 }}>
+              <h1 style={{ margin: 0, fontSize: 28 }}>شهادة امتحانات الشهر</h1>
+              <div style={{ marginTop: 4 }}>
+                منصة: <span data-field="platform">—</span>
+              </div>
+            </div>
 
-    <div style={{ fontSize: 11, margin: '0 4px' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-        <thead>
-          <tr>
-            {['#','المستوي','المادة','الدرجة','النسبة','الحالة','تاريخ التسليم'].map((h) => (
-              <th
-                key={h}
-                style={{ padding: '6px', border: '1px solid #000', background: '#f2f2f2', textAlign: 'right' }}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody data-field="rows"></tbody>
-      </table>
-    </div>
+            <div style={{ textAlign: 'center', margin: '10px 0 12px', lineHeight: 1.6 }}>
+              <div>تُمنح هذه الشهادة إلى</div>
+              <div style={{ fontSize: 24, fontWeight: 'bold' }} data-field="student">—</div>
+              <div style={{ fontSize: 14, color: '#444', marginTop: 4 }}>
+                تشمل الشهادة جميع الامتحانات التي قام الطالب بإتمامها على المنصة.
+              </div>
+              <div style={{ marginTop: 6, fontSize: 14 }}>
+                الإجمالي: <span data-field="total">—</span> — تاريخ الإصدار: <span data-field="date">—</span>
+              </div>
+            </div>
 
-    <div
-      style={{
-        position: 'absolute',
-        bottom: 26,
-        left: 26,
-        right: 26,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}
-    >
-      <div style={{ textAlign: 'center' }}>
-        <div>______________________</div>
-        <div>واحة العلم </div>
-      </div>
-      <img data-field="qr" alt="QR" style={{ width: 90, height: 90 }} />
-    </div>
+            <div style={{ fontSize: 11, margin: '0 4px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                <thead>
+                  <tr>
+                    {['#', 'المستوي', 'المادة', 'الدرجة', 'النسبة', 'الحالة', 'تاريخ التسليم'].map((h) => (
+                      <th
+                        key={h}
+                        style={{ padding: '6px', border: '1px solid #000', background: '#f2f2f2', textAlign: 'right' }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody data-field="rows"></tbody>
+              </table>
+            </div>
 
-    <div style={{ position: 'absolute', bottom: 8, left: 26, fontSize: 11, color: '#666' }}>
-      رقم الشهادة: <span data-field="serial">—</span>
-    </div>
-  </div>
-</div>
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 26,
+                left: 26,
+                right: 26,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div style={{ textAlign: 'center' }}>
+                <div>______________________</div>
+                <div>واحة العلم </div>
+              </div>
+              <img data-field="qr" alt="QR" style={{ width: 90, height: 90 }} />
+            </div>
+
+            <div style={{ position: 'absolute', bottom: 8, left: 26, fontSize: 11, color: '#666' }}>
+              رقم الشهادة: <span data-field="serial">—</span>
+            </div>
+          </div>
+        </div>
 
 
       </div>
       {/* ✅ نافذة اختيار المستوى - تظهر للطالب فقط */}
-{showLevelSelector && userRole !== 'admin' && (
-  <div 
-    className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-    style={{
-      animation: 'fadeIn 0.3s ease-out'
-    }}
-  >
-    <style jsx>{`
+      {showLevelSelector && userRole !== 'admin' && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          style={{
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+        >
+          <style jsx>{`
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -2266,91 +2416,91 @@ const generateAllExamsCertificate = async () => {
         }
       }
     `}</style>
-    
-    <div 
-      className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
-      style={{
-        animation: 'slideUp 0.4s ease-out'
-      }}
-    >
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#665446] to-[#8B7355] p-6 text-white text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold font-[Almarai] mb-2">
-مرحبا بك في اختبرات الواحة        </h2>
-        <p className="text-sm opacity-90 font-[Almarai]">
-          اختر المستوى الدراسي الخاص بك
-        </p>
-      </div>
 
-      {/* Body */}
-      <div className="p-6 space-y-4">
-        <button
-          onClick={() => handleLevelSelection('level1')}
-          className="w-full group relative overflow-hidden rounded-2xl border-3 border-[#665446] bg-gradient-to-br from-white to-gray-50 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
-          style={{
-            borderWidth: '3px'
-          }}
-        >
-          <div 
-            className="absolute inset-0 bg-[#665446] opacity-0 group-hover:opacity-5 transition-opacity duration-300"
-          ></div>
-          <div className="relative flex items-center gap-4">
-            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-[#665446] text-white flex items-center justify-center text-2xl font-bold shadow-lg transform group-hover:scale-110 transition-transform duration-300">
-              1
+          <div
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
+            style={{
+              animation: 'slideUp 0.4s ease-out'
+            }}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#665446] to-[#8B7355] p-6 text-white text-center">
+              <h2 className="text-2xl sm:text-3xl font-bold font-[Almarai] mb-2">
+                مرحبا بك في اختبرات الواحة        </h2>
+              <p className="text-sm opacity-90 font-[Almarai]">
+                اختر المستوى الدراسي الخاص بك
+              </p>
             </div>
-            <div className="flex-1 text-right">
-              <h3 className="text-xl font-bold font-[Almarai] text-[#665446] mb-1 group-hover:text-[#8B7355] transition-colors">
-                المستوى الأول
-              </h3>
-              <p className="text-sm text-gray-600 font-[Almarai]">
-المستوى الأول              </p>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <button
+                onClick={() => handleLevelSelection('level1')}
+                className="w-full group relative overflow-hidden rounded-2xl border-3 border-[#665446] bg-gradient-to-br from-white to-gray-50 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+                style={{
+                  borderWidth: '3px'
+                }}
+              >
+                <div
+                  className="absolute inset-0 bg-[#665446] opacity-0 group-hover:opacity-5 transition-opacity duration-300"
+                ></div>
+                <div className="relative flex items-center gap-4">
+                  <div className="flex-shrink-0 w-16 h-16 rounded-full bg-[#665446] text-white flex items-center justify-center text-2xl font-bold shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+                    1
+                  </div>
+                  <div className="flex-1 text-right">
+                    <h3 className="text-xl font-bold font-[Almarai] text-[#665446] mb-1 group-hover:text-[#8B7355] transition-colors">
+                      المستوى الأول
+                    </h3>
+                    <p className="text-sm text-gray-600 font-[Almarai]">
+                      المستوى الأول              </p>
+                  </div>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[#665446]">
+                    ←
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleLevelSelection('level2')}
+                className="w-full group relative overflow-hidden rounded-2xl border-3 border-[#8B7355] bg-gradient-to-br from-white to-gray-50 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+                style={{
+                  borderWidth: '3px'
+                }}
+              >
+                <div
+                  className="absolute inset-0 bg-[#8B7355] opacity-0 group-hover:opacity-5 transition-opacity duration-300"
+                ></div>
+                <div className="relative flex items-center gap-4">
+                  <div className="flex-shrink-0 w-16 h-16 rounded-full bg-[#8B7355] text-white flex items-center justify-center text-2xl font-bold shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+                    2
+                  </div>
+                  <div className="flex-1 text-right">
+                    <h3 className="text-xl font-bold font-[Almarai] text-[#8B7355] mb-1 group-hover:text-[#665446] transition-colors">
+                      التمهيدي
+                    </h3>
+                    <p className="text-sm text-gray-600 font-[Almarai]">
+                      المرحلة التمهيدية              </p>
+                  </div>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[#8B7355]">
+                    ←
+                  </div>
+                </div>
+              </button>
             </div>
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[#665446]">
-              ←
+
+            {/* Footer */}
+            <div className="px-6 pb-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+                <p className="text-xs text-blue-700 font-[Almarai] flex items-center justify-center gap-2">
+                  <span className="text-lg">💡</span>
+                  <span>يمكنك تغيير المستوى لاحقاً من التبويبات أعلى الصفحة</span>
+                </p>
+              </div>
             </div>
           </div>
-        </button>
-
-        <button
-          onClick={() => handleLevelSelection('level2')}
-          className="w-full group relative overflow-hidden rounded-2xl border-3 border-[#8B7355] bg-gradient-to-br from-white to-gray-50 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
-          style={{
-            borderWidth: '3px'
-          }}
-        >
-          <div 
-            className="absolute inset-0 bg-[#8B7355] opacity-0 group-hover:opacity-5 transition-opacity duration-300"
-          ></div>
-          <div className="relative flex items-center gap-4">
-            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-[#8B7355] text-white flex items-center justify-center text-2xl font-bold shadow-lg transform group-hover:scale-110 transition-transform duration-300">
-              2
-            </div>
-            <div className="flex-1 text-right">
-              <h3 className="text-xl font-bold font-[Almarai] text-[#8B7355] mb-1 group-hover:text-[#665446] transition-colors">
-                التمهيدي
-              </h3>
-              <p className="text-sm text-gray-600 font-[Almarai]">
-المرحلة التمهيدية              </p>
-            </div>
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-[#8B7355]">
-              ←
-            </div>
-          </div>
-        </button>
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 pb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
-          <p className="text-xs text-blue-700 font-[Almarai] flex items-center justify-center gap-2">
-            <span className="text-lg">💡</span>
-            <span>يمكنك تغيير المستوى لاحقاً من التبويبات أعلى الصفحة</span>
-          </p>
         </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </AnimatedBackground>
   );
 };
