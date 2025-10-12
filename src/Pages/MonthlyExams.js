@@ -644,17 +644,7 @@ questions.forEach((q) => {
 
   if (isCorrect) score += questionMarks;
 });
-      // ✅ حساب الدرجة
-      let score = 0;
-      qs.forEach(q => {
-        const studentAnswer = (takingAnswers[q.id] || '').toString().toUpperCase();
-        const correctAnswer = (q.correct_answer || '').toString().toUpperCase();
-
-        if (studentAnswer && studentAnswer === correctAnswer) {
-          score += Number(q.marks || 1);
-        }
-      });
-
+      
       const percentage = (score / attempt.total_marks) * 100;
 
       const { error: updateErr } = await supabase
