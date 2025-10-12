@@ -644,11 +644,36 @@ const MonthlyExams = () => {
   };
 
 // توحيد الإجابات قبل الحفظ
+// ✅ دالة موحّدة لتطبيع الإجابات قبل الحفظ
 const normalizeAnswer = (q: any, raw: any): string | null => {
-  if (raw === undefined || raw === null) return null;
+  if (raw === undefined || raw === null || raw === '') return null;
+  
   const val = raw.toString().trim();
+  const qtype = (q.question_type || 'multiple_choice').toLowerCase();
 
-  // خرائط مساعدة
+  // ✅ أسئلة True/False - نحفظ TRUE/FALSE مباشرة
+  if (qtype === 'true_false') {
+    const up = val.toUpperCase();
+    
+    // قائمة القيم المقبولة للصح
+    if (['TRUE', 'T', '1', 'صح', 'صحيح', 'نعم', 'YES', 'Y', '✅'].includes(up) || 
+        ['TRUE', 'T', '1', 'صح', 'صحيح', 'نعم', 'YES', 'Y', '✅'].includes(val)) {
+      return 'TRUE';
+    }
+    
+    // قائمة القيم المقبولة للخطأ
+    if (['FALSE', 'F', '0', 'خطأ', 'لا', 'NO', 'N', '❌'].includes(up) || 
+        ['FALSE', 'F', '0', 'خطأ', 'لا', 'NO', 'N', '❌'].includes(val)) {
+      return 'FALSE';
+    }
+    
+    return up; // fallback
+  }
+
+  // ✅ أسئلة Multiple Choice
+  const up = val.toUpperCase();
+
+  // خريطة الأحرف العربية
   const arLetterToKey: Record<string, string> = {
     'أ': 'A', 'ا': 'A',
     'ب': 'B',
@@ -656,24 +681,8 @@ const normalizeAnswer = (q: any, raw: any): string | null => {
     'د': 'D',
   };
 
-  const tfTrue = new Set(['TRUE','T','1','صح','صحيح','نعم','yes','y','✅']);
-  const tfFalse = new Set(['FALSE','F','0','خطأ','لا','no','n','❌']);
-
-  // نوع السؤال
-  const qtype = (q.question_type || 'multiple_choice').toLowerCase();
-
-  if (qtype === 'true_false') {
-    const up = val.toUpperCase();
-    if (tfTrue.has(up) || tfTrue.has(val)) return 'TRUE';
-    if (tfFalse.has(up) || tfFalse.has(val)) return 'FALSE';
-    return up; // fallback
-  }
-
-  // multiple_choice
-  const up = val.toUpperCase();
-
   // 1) لو بالفعل A/B/C/D
-  if (['A','B','C','D'].includes(up)) return up;
+  if (['A', 'B', 'C', 'D'].includes(up)) return up;
 
   // 2) لو حرف عربي
   if (arLetterToKey[val]) return arLetterToKey[val];
@@ -683,12 +692,13 @@ const normalizeAnswer = (q: any, raw: any): string | null => {
   const b = (q.option_b ?? '').toString().trim();
   const c = (q.option_c ?? '').toString().trim();
   const d = (q.option_d ?? '').toString().trim();
+  
   if (val === a) return 'A';
   if (val === b) return 'B';
   if (val === c) return 'C';
   if (val === d) return 'D';
 
-  // 4) لو وصلنا هنا، رجّع النسخة الموحّدة قدر الإمكان
+  // 4) fallback
   return up;
 };
 
@@ -793,83 +803,68 @@ questions.forEach(q => {
       }
 
       // 4) حساب الدرجة والنسبة يدويًا (قبل التسليم)
-      let score = 0;
-      let totalMarks = Number(takingExam.total_marks) || 0;
+  // 4) حساب الدرجة والنسبة يدويًا
+let score = 0;
+let totalMarks = Number(takingExam.total_marks) || 0;
 
-      // لو total_marks مش متسجل، احسبه من مجموع marks للأسئلة
-      if (!totalMarks) {
-        totalMarks = questions.reduce((sum, q) => sum + Number(q.marks || 1), 0);
-      }
+if (!totalMarks) {
+  totalMarks = questions.reduce((sum, q) => sum + Number(q.marks || 1), 0);
+}
 
-      console.log('📊 بدء حساب الدرجات:');
-      console.log('  إجمالي الدرجات:', totalMarks);
+console.log('📊 بدء حساب الدرجات:');
+console.log('  إجمالي الدرجات:', totalMarks);
 
-      const gradingDetails = [];
+const gradingDetails = [];
 
-      questions.forEach(q => {
-        let studentAns = (takingAnswers[q.id] || '').toString().toUpperCase().trim();
-        let correctAns = (q.correct_answer || '').toString().toUpperCase().trim();
+questions.forEach(q => {
+  const studentAns = (takingAnswers[q.id] || '').toString().toUpperCase().trim();
+  const correctAns = (q.correct_answer || '').toString().toUpperCase().trim();
 
-        // ✅ معالجة خاصة لأسئلة True/False
-        if (q.question_type === 'true_false') {
-          // تحويل TRUE/FALSE لـ A/B للمقارنة مع قاعدة البيانات القديمة
-          const originalStudent = studentAns;
-          const originalCorrect = correctAns;
+  // ✅ المقارنة المباشرة بعد التطبيع
+  const isCorrect = studentAns && studentAns === correctAns;
+  const questionMarks = Number(q.marks || 1);
 
-          if (studentAns === 'TRUE' || studentAns === 'T' || studentAns === '1') studentAns = 'A';
-          if (studentAns === 'FALSE' || studentAns === 'F' || studentAns === '0') studentAns = 'B';
+  gradingDetails.push({
+    order: q.question_order,
+    type: q.question_type,
+    studentAnswer: takingAnswers[q.id] || 'لم يجب',
+    correctAnswer: q.correct_answer,
+    isCorrect,
+    marks: isCorrect ? questionMarks : 0,
+    totalMarks: questionMarks
+  });
 
-          if (correctAns === 'TRUE' || correctAns === 'T' || correctAns === '1') correctAns = 'A';
-          if (correctAns === 'FALSE' || correctAns === 'F' || correctAns === '0') correctAns = 'B';
+  if (isCorrect) {
+    score += questionMarks;
+  }
+});
 
-          console.log(`  🔄 تحويل سؤال ${q.question_order}:`, {
-            'إجابة الطالب': `${originalStudent} → ${studentAns}`,
-            'الإجابة الصحيحة': `${originalCorrect} → ${correctAns}`
-          });
+console.table(gradingDetails);
 
-        }
+const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
 
-        const isCorrect = studentAns && studentAns === correctAns;
-        const questionMarks = Number(q.marks || 1);
+console.log('📊 النتيجة النهائية:');
+console.log('  ✅ الدرجة:', score, '/', totalMarks);
+console.log('  📈 النسبة:', percentage.toFixed(2), '%');
 
-        gradingDetails.push({
-          order: q.question_order,
-          type: q.question_type,
-          studentAnswer: takingAnswers[q.id] || 'لم يجب',
-          correctAnswer: q.correct_answer,
-          isCorrect,
-          marks: isCorrect ? questionMarks : 0,
-          totalMarks: questionMarks
-        });
+// 5) تحديث attempt - الآن نحفظ النتيجة!
+console.log('💾 حفظ النتيجة في قاعدة البيانات...');
 
-        if (isCorrect) {
-          score += questionMarks;
-        }
-      });
-
-      // طباعة تفاصيل التصحيح
-      console.table(gradingDetails);
-
-      const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
-
-      console.log('📊 النتيجة النهائية:');
-      console.log('  ✅ الدرجة:', score, '/', totalMarks);
-      console.log('  📈 النسبة:', percentage.toFixed(2), '%');
-
-      // 5) تحديث attempt بالنتيجة والحالة ووقت التسليم
-      console.log('💾 حفظ النتيجة في قاعدة البيانات...');
-
-  const { error: updateAttemptErr } = await supabase
+const { error: updateAttemptErr } = await supabase
   .from('exam_attempts')
   .update({
     status: 'submitted',
     submitted_at: new Date().toISOString(),
-    // 👇 مهم: لا تكتب score/percentage هنا من الواجهة
-    is_graded: false, // سيصير TRUE بعد التصحيح السيرفري
+    score: score,              // ✅ نحفظ الدرجة
+    percentage: percentage,    // ✅ نحفظ النسبة
+    total_marks: totalMarks,   // ✅ نحفظ الإجمالي
+    is_graded: true,           // ✅ تم التصحيح
   })
   .eq('id', takingExam.id);
 
 if (updateAttemptErr) throw updateAttemptErr;
+
+console.log('✅ تم حفظ النتيجة بنجاح!');
 
       console.log('✅ تم حفظ النتيجة بنجاح!');
 
@@ -894,8 +889,7 @@ if (updateAttemptErr) throw updateAttemptErr;
       toast.success(
         `✅ تم تسليم الامتحان بنجاح!
 
-📊 النتيجة: ${score}/${totalMarks} (${percentage.toFixed(1)}%)
-${isPassed ? '🎉 مبروك! لقد نجحت' : '📚 للأسف لم تنجح هذه المرة'}
+)}
 
 يمكنك الاطلاع على التفاصيل في صفحة النتائج`
       );
