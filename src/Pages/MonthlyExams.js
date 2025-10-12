@@ -662,8 +662,8 @@ const normalizeAnswer = (q: any, raw: any): string | null => {
     }
     
     // قائمة القيم المقبولة للخطأ
-    if (['FALSE', 'F', '0', 'خطأ', 'لا', 'NO', 'N', '❌'].includes(up) || 
-        ['FALSE', 'F', '0', 'خطأ', 'لا', 'NO', 'N', '❌'].includes(val)) {
+    if (['FALSE', 'F', '0', 'خطأ', 'خطا', 'لا', 'NO', 'N', '❌'].includes(up) || 
+        ['FALSE', 'F', '0', 'خطأ', 'خطا', 'لا', 'NO', 'N', '❌'].includes(val)) {
       return 'FALSE';
     }
     
@@ -701,6 +701,7 @@ const normalizeAnswer = (q: any, raw: any): string | null => {
   // 4) fallback
   return up;
 };
+
 
 
   const submitExamManually = async () => {
