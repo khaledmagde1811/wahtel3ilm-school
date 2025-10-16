@@ -3,16 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../Utilities/supabaseClient';
 
 const CourseLessons = () => {
-  const { id } = useParams();           // رقم الدورة من الـ URL
-  const navigate = useNavigate();       // للتنقل بين الصفحات
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
-  const [allLessons, setAllLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    // التحقق من حالة تسجيل الدخول
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
@@ -21,7 +19,6 @@ const CourseLessons = () => {
 
     checkAuth();
 
-    // الاستماع لتغييرات حالة المصادقة
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
@@ -42,7 +39,7 @@ const CourseLessons = () => {
       }
 
       try {
-        // الخطوة 1: جلب جميع المحاضرات في الدورة
+        // جلب جميع المحاضرات في الدورة (كلها مفتوحة)
         const { data: courseLessons, error: courseLessonsError } = await supabase
           .from('lessons')
           .select('*')
@@ -55,48 +52,8 @@ const CourseLessons = () => {
           return;
         }
 
-        setAllLessons(courseLessons || []);
-
-        // الخطوة 2: الحصول على student_id من جدول students
-        const { data: studentRecord, error: studentError } = await supabase
-          .from('students')
-          .select('id')
-          .eq('auth_id', user.id)
-          .maybeSingle();
-
-        if (studentError || !studentRecord) {
-          console.error('Error fetching student ID:', studentError);
-          setLoading(false);
-          return;
-        }
-
-        // الخطوة 3: جلب المحاضرات المسموح بها للطالب
-        const { data: accessibleLessons, error: accessError } = await supabase
-          .from('student_lesson_access')
-          .select('lesson_id')
-          .eq('student_id', user.id) // استخدام auth_id
-          .eq('is_open', true);
-
-        if (accessError) {
-          console.error('Error fetching access list:', accessError);
-          setLoading(false);
-          return;
-        }
-
-        const accessibleLessonIds = accessibleLessons.map((item) => item.lesson_id);
-
-        // الخطوة 4: إضافة المحاضرة الأولى دائماً (إذا وجدت)
-        const firstLesson = courseLessons.length > 0 ? courseLessons[0] : null;
-        if (firstLesson && !accessibleLessonIds.includes(firstLesson.id)) {
-          accessibleLessonIds.push(firstLesson.id);
-        }
-
-        // الخطوة 5: فلترة المحاضرات حسب الوصول المسموح
-        const filteredLessons = courseLessons.filter(lesson => 
-          accessibleLessonIds.includes(lesson.id)
-        );
-
-        setLessons(filteredLessons);
+        // عرض جميع المحاضرات بدون قيود
+        setLessons(courseLessons || []);
 
       } catch (error) {
         console.error('Error in fetchLessons:', error);
@@ -108,19 +65,15 @@ const CourseLessons = () => {
     fetchLessons();
   }, [id, user, authLoading]);
 
-  // إظهار شاشة التحميل أثناء التحقق من المصادقة
   if (authLoading || (user && loading)) {
     return (
       <div className="min-h-screen py-10 px-4 relative overflow-hidden">
-        {/* Animated Background for Loading */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#CDC0B6] via-[#B8A99C] to-[#A69589]">
           <div className="absolute inset-0">
-            {/* Loading animation circles */}
             <div className="absolute w-40 h-40 bg-gradient-to-r from-[#FFF9EF]/30 to-[#E8D5C4]/30 rounded-full blur-xl animate-pulse" style={{top: '20%', left: '20%', animationDuration: '2s'}}></div>
             <div className="absolute w-32 h-32 bg-gradient-to-l from-[#665446]/20 to-[#5A4633]/20 rounded-full blur-lg animate-pulse" style={{bottom: '30%', right: '25%', animationDuration: '2.5s'}}></div>
             <div className="absolute w-24 h-24 bg-gradient-to-t from-[#FFF9EF]/25 to-[#CDC0B6]/25 rounded-full blur-md animate-pulse" style={{top: '60%', right: '15%', animationDuration: '1.8s'}}></div>
             
-            {/* Loading particles */}
             <div className="absolute w-4 h-4 bg-[#FFF9EF] rounded-full opacity-60 animate-bounce" style={{top: '25%', left: '15%', animationDelay: '0s', animationDuration: '2s'}}></div>
             <div className="absolute w-3 h-3 bg-[#665446] rounded-full opacity-50 animate-bounce" style={{top: '45%', right: '20%', animationDelay: '0.5s', animationDuration: '2.2s'}}></div>
             <div className="absolute w-5 h-5 bg-[#E8D5C4] rounded-full opacity-40 animate-bounce" style={{bottom: '40%', left: '30%', animationDelay: '1s', animationDuration: '1.8s'}}></div>
@@ -135,19 +88,15 @@ const CourseLessons = () => {
     );
   }
 
-  // إذا لم يكن المستخدم مسجل الدخول
   if (!user) {
     return (
       <div className="min-h-screen py-10 px-4 relative overflow-hidden">
-        {/* Animated Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#CDC0B6] via-[#B8A99C] to-[#A69589]">
           <div className="absolute inset-0">
-            {/* Large floating circles */}
             <div className="absolute w-80 h-80 bg-gradient-to-r from-[#FFF9EF]/20 to-[#E8D5C4]/20 rounded-full blur-3xl animate-pulse" style={{top: '-15%', left: '-15%', animationDuration: '6s'}}></div>
             <div className="absolute w-64 h-64 bg-gradient-to-l from-[#665446]/15 to-[#5A4633]/15 rounded-full blur-3xl animate-pulse" style={{bottom: '-10%', right: '-10%', animationDuration: '8s'}}></div>
             <div className="absolute w-48 h-48 bg-gradient-to-t from-[#FFF9EF]/25 to-[#CDC0B6]/25 rounded-full blur-2xl animate-pulse" style={{top: '20%', right: '15%', animationDuration: '7s'}}></div>
             
-            {/* Floating particles */}
             <div className="absolute w-6 h-6 bg-[#FFF9EF] rounded-full opacity-60 animate-bounce" style={{top: '15%', left: '10%', animationDelay: '0s', animationDuration: '4s'}}></div>
             <div className="absolute w-4 h-4 bg-[#665446] rounded-full opacity-50 animate-bounce" style={{top: '35%', right: '12%', animationDelay: '1s', animationDuration: '5s'}}></div>
             <div className="absolute w-8 h-8 bg-[#E8D5C4] rounded-full opacity-40 animate-bounce" style={{bottom: '30%', left: '20%', animationDelay: '2s', animationDuration: '4.5s'}}></div>
@@ -190,24 +139,18 @@ const CourseLessons = () => {
     );
   }
 
-  // إذا كان المستخدم مسجل الدخول - عرض المحاضرات
   return (
     <div className="min-h-screen py-10 px-4 relative overflow-hidden">
-      {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#CDC0B6] via-[#B8A99C] to-[#A69589]">
-        {/* Animated geometric shapes */}
         <div className="absolute inset-0">
-          {/* Large floating circles */}
           <div className="absolute w-96 h-96 bg-gradient-to-r from-[#FFF9EF]/18 to-[#E8D5C4]/18 rounded-full blur-3xl animate-pulse" style={{top: '-20%', left: '-20%', animationDuration: '8s'}}></div>
           <div className="absolute w-80 h-80 bg-gradient-to-l from-[#665446]/12 to-[#5A4633]/12 rounded-full blur-3xl animate-pulse" style={{bottom: '-15%', right: '-15%', animationDuration: '10s'}}></div>
           <div className="absolute w-64 h-64 bg-gradient-to-t from-[#FFF9EF]/22 to-[#CDC0B6]/22 rounded-full blur-2xl animate-pulse" style={{top: '15%', right: '10%', animationDuration: '9s'}}></div>
           <div className="absolute w-72 h-72 bg-gradient-to-b from-[#E8D5C4]/15 to-[#CDC0B6]/15 rounded-full blur-3xl animate-pulse" style={{bottom: '20%', left: '15%', animationDuration: '11s'}}></div>
           
-          {/* Medium floating elements */}
           <div className="absolute w-48 h-48 bg-gradient-to-tr from-[#FFF9EF]/25 to-[#665446]/8 rounded-full blur-xl animate-pulse" style={{top: '35%', left: '25%', animationDuration: '7s'}}></div>
           <div className="absolute w-56 h-56 bg-gradient-to-bl from-[#CDC0B6]/20 to-[#5A4633]/12 rounded-full blur-xl animate-pulse" style={{top: '55%', right: '20%', animationDuration: '8.5s'}}></div>
           
-          {/* Floating particles */}
           <div className="absolute w-6 h-6 bg-[#FFF9EF] rounded-full opacity-50 animate-bounce" style={{top: '18%', left: '12%', animationDelay: '0s', animationDuration: '5s'}}></div>
           <div className="absolute w-4 h-4 bg-[#665446] rounded-full opacity-40 animate-bounce" style={{top: '28%', right: '14%', animationDelay: '1s', animationDuration: '6s'}}></div>
           <div className="absolute w-8 h-8 bg-[#FFF9EF] rounded-full opacity-35 animate-bounce" style={{bottom: '42%', left: '18%', animationDelay: '2s', animationDuration: '5.5s'}}></div>
@@ -217,7 +160,6 @@ const CourseLessons = () => {
           <div className="absolute w-4 h-4 bg-[#E8D5C4] rounded-full opacity-55 animate-bounce" style={{top: '82%', left: '50%', animationDelay: '1.2s', animationDuration: '5.2s'}}></div>
           <div className="absolute w-6 h-6 bg-[#FFF9EF] rounded-full opacity-40 animate-bounce" style={{bottom: '52%', right: '35%', animationDelay: '0.8s', animationDuration: '6.5s'}}></div>
           
-          {/* Animated waves */}
           <div className="absolute bottom-0 left-0 w-full h-56 opacity-20">
             <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-full">
               <path d="M0,60 C300,120 900,0 1200,60 L1200,120 L0,120 Z" fill="#FFF9EF">
@@ -231,7 +173,6 @@ const CourseLessons = () => {
             </svg>
           </div>
           
-          {/* Top wave */}
           <div className="absolute top-0 left-0 w-full h-48 opacity-15 transform rotate-180">
             <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-full">
               <path d="M0,60 C300,120 900,0 1200,60 L1200,0 L0,0 Z" fill="#665446">
@@ -245,7 +186,6 @@ const CourseLessons = () => {
             </svg>
           </div>
 
-          {/* Educational themed floating elements */}
           <div className="absolute w-16 h-16 opacity-15 animate-spin" style={{top: '25%', left: '15%', animationDuration: '25s'}}>
             <div className="w-full h-full bg-[#FFF9EF] transform rotate-45 rounded-lg"></div>
           </div>
@@ -258,65 +198,30 @@ const CourseLessons = () => {
         </div>
       </div>
 
-      {/* Content */}
       <div className="relative z-10">
         <h1 className="text-center text-[#665446] text-4xl font-bold mb-10 drop-shadow-sm">
           المحاضرات الخاصة بالدورة 
         </h1>
 
-        {allLessons.length === 0 ? (
+        {lessons.length === 0 ? (
           <div className="flex items-center justify-center min-h-[50vh]">
             <p className="text-[#665446] text-center text-xl bg-[#FFF9EF]/90 backdrop-blur-sm px-8 py-6 rounded-xl shadow-lg">
               لا توجد محاضرات في هذه الدورة.
             </p>
           </div>
-        ) : lessons.length === 0 ? (
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-[#FFF9EF]/95 backdrop-blur-sm rounded-xl shadow-2xl p-8 border border-white/20">
-              <div className="text-6xl mb-4 animate-pulse">🔒</div>
-              <h2 className="text-[#665446] text-2xl font-bold mb-4">
-                المحاضرات غير متاحة بعد
-              </h2>
-              <p className="text-[#665446] mb-6">
-                لم يتم فتح أي محاضرات لك في هذه الدورة بعد. 
-                يرجى التواصل مع المدرب أو إكمال المتطلبات السابقة.
-              </p>
-              <div className="bg-[#CDC0B6]/50 backdrop-blur-sm rounded-lg p-4 mb-4">
-                <p className="text-[#665446] text-sm">
-                  📋 إجمالي المحاضرات في الدورة: {allLessons.length}
-                </p>
-              </div>
-              <button
-                onClick={() => navigate('/')}
-                className="bg-[#665446] text-white py-3 px-6 rounded-lg font-semibold hover:bg-[#554437] hover:scale-105 transition-all duration-300 shadow-lg"
-              >
-                العودة للصفحة الرئيسية
-              </button>
-            </div>
-          </div>
         ) : (
           <div className="max-w-3xl mx-auto">
-            {/* إحصائيات المحاضرات */}
             <div className="bg-[#FFF9EF]/95 backdrop-blur-sm rounded-xl shadow-lg p-4 mb-6 border border-white/20">
               <div className="flex justify-between items-center text-[#665446]">
                 <span className="font-semibold">
-                  المحاضرات المتاحة: {lessons.length} من {allLessons.length}
+                  إجمالي المحاضرات: {lessons.length}
                 </span>
-                <div className="flex items-center gap-2">
-                  <div className="w-full bg-[#CDC0B6]/60 backdrop-blur-sm rounded-full h-2 w-32">
-                    <div 
-                      className="bg-[#665446] h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${(lessons.length / allLessons.length) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm">
-                    {Math.round((lessons.length / allLessons.length) * 100)}%
-                  </span>
-                </div>
+                <span className="text-sm bg-green-100/80 backdrop-blur-sm text-green-700 px-3 py-1 rounded-full font-medium">
+                  ✅ جميع المحاضرات متاحة
+                </span>
               </div>
             </div>
 
-            {/* قائمة المحاضرات */}
             <div className="flex flex-col gap-6">
               {lessons.map((lesson, index) => (
                 <div key={lesson.id} className="relative" style={{
@@ -334,11 +239,9 @@ const CourseLessons = () => {
                       <div className="flex-1">
                         <h2 className="text-[#665446] text-2xl font-bold mb-2 flex items-center gap-2 group-hover:text-[#5A4633] transition-colors duration-300">
                           {lesson.title}
-                          {lesson.id === allLessons[0]?.id && (
-                            <span className="text-xs bg-green-100/80 backdrop-blur-sm text-green-700 px-2 py-1 rounded-full font-normal">
-                              مفتوحة دائماً
-                            </span>
-                          )}
+                          <span className="text-xs bg-green-100/80 backdrop-blur-sm text-green-700 px-2 py-1 rounded-full font-normal">
+                            متاحة
+                          </span>
                         </h2>
                         <p className="text-[#665446] mb-3 group-hover:text-[#5A4633] transition-colors duration-300">
                           {lesson.description}
@@ -348,7 +251,7 @@ const CourseLessons = () => {
                             ⏱️ {lesson.duration || 'غير محدد'}
                           </span>
                           <span className="flex items-center gap-1">
-                            {lesson.id === allLessons[0]?.id ? '🆓 مجانية' : '🎯 متاح الآن'}
+                            🎯 انقر للمشاهدة
                           </span>
                         </div>
                       </div>
@@ -362,47 +265,10 @@ const CourseLessons = () => {
                 </div>
               ))}
             </div>
-
-            {/* المحاضرات المقفلة */}
-            {allLessons.length > lessons.length && (
-              <div className="mt-8">
-                <h3 className="text-[#665446] text-xl font-bold mb-4 text-center drop-shadow-sm">
-                  المحاضرات القادمة
-                </h3>
-                <div className="flex flex-col gap-4">
-                  {allLessons
-                    .filter(lesson => !lessons.find(l => l.id === lesson.id))
-                    .slice(0, 3)
-                    .map((lesson, index) => (
-                    <div key={lesson.id} className="opacity-60" style={{
-                      animationDelay: `${(lessons.length + index) * 0.1}s`,
-                      animation: 'fadeInUp 0.6s ease-out forwards'
-                    }}>
-                      <div className="bg-[#FFF9EF]/80 backdrop-blur-sm rounded-xl shadow-md p-6 border border-dashed border-[#CDC0B6]/60">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-12 h-12 bg-[#CDC0B6]/60 backdrop-blur-sm text-[#665446] rounded-full flex items-center justify-center font-bold text-lg">
-                            🔒
-                          </div>
-                          <div className="flex-1">
-                            <h2 className="text-[#665446] text-xl font-bold mb-2">
-                              {lesson.title}
-                            </h2>
-                            <p className="text-[#665446] text-sm">
-                              سيتم فتح هذه المحاضرة بعد إكمال المحاضرات السابقة
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
 
-      {/* CSS Animation Keyframes */}
       <style jsx>{`
         @keyframes fadeInUp {
           from {

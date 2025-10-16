@@ -1195,55 +1195,420 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
   };
 
   // 4) توليد الشهادة
-  const generateAllExamsCertificate = async () => {
-    try {
-      setIsCertGenerating(true);
-      const rows = getMyCompletedAttempts();
-      if (rows.length === 0) { toast.error('لا توجد امتحانات مكتملة لديك بعد.'); return; }
-      if (!rows.some(r => canViewResult(r.att))) { toast.info('الشهادة ستتاح بعد مرور ساعتين من تسليم أول امتحان.'); return; }
+const generateAllExamsCertificate = async () => {
+  try {
+    setIsCertGenerating(true);
+    const rows = getMyCompletedAttempts();
+    
+    // ========== التحقق من البيانات ==========
+    if (rows.length === 0) { 
+      toast.error('لا توجد امتحانات مكتملة لديك بعد.'); 
+      return; 
+    }
+    if (!rows.some(r => canViewResult(r.att))) { 
+      toast.info('الشهادة ستتاح بعد مرور ساعتين من تسليم أول امتحان.'); 
+      return; 
+    }
 
-      const sum = summarizeCompletedAttempts(rows);
-      const serial = `RL-ALL-${new Date().toISOString().slice(0, 10)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-      const verifyUrl = `https://yourdomain.com/cert/verify?serial=${encodeURIComponent(serial)}`;
-      const qrDataUrl = await QRCode.toDataURL(verifyUrl);
+    // ========== استيراد المكتبات بشكل متوازي ==========
+    console.log('📦 جاري تحميل المكتبات...');
+    const [{ default: html2canvas }, jspdfMod, { default: QRCode }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+      import('qrcode')
+    ]);
+    const { jsPDF } = jspdfMod;
+    console.log('✅ تم تحميل المكتبات بنجاح');
 
-      const el = certRef.current; if (!el) throw new Error('لم يتم العثور على عنصر القالب');
-      el.querySelector('[data-field="platform"]').textContent = 'واحة العلم التعليمية';
-      el.querySelector('[data-field="student"]').textContent = userName || 'الطالب';
-      el.querySelector('[data-field="date"]').textContent = new Date().toISOString().slice(0, 10);
-      el.querySelector('[data-field="serial"]').textContent = serial;
-      el.querySelector('[data-field="qr"]').src = qrDataUrl;
-      el.querySelector('[data-field="total"]').textContent = `${sum.totalScore} / ${sum.totalMarks} (${sum.percentage}%)`;
+    // ========== إعداد البيانات ==========
+    const sum = summarizeCompletedAttempts(rows);
+    const serial = `RL-ALL-${new Date().toISOString().slice(0, 10)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const verifyUrl = `https://yourdomain.com/cert/verify?serial=${encodeURIComponent(serial)}`;
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, { 
+      width: 180, 
+      margin: 1,
+      errorCorrectionLevel: 'M'
+    });
 
-      const tbody = el.querySelector('[data-field="rows"]');
-      tbody.innerHTML = rows.map(({ exam, att }, i) => {
-        const passPct = (exam.pass_marks / (exam.total_marks || 1)) * 100;
-        const isPass = (att.percentage || 0) >= passPct;
-        const submitted = att.submitted_at ? new Date(att.submitted_at).toLocaleString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-        return `
+    // ========== صفحة 1: الشهادة ==========
+    console.log('📄 جاري إنشاء صفحة الشهادة...');
+    const el = certRef.current;
+    if (!el) throw new Error('لم يتم العثور على عنصر القالب');
+    
+    // تعبئة البيانات الأساسية
+    el.querySelector('[data-field="platform"]').textContent = 'واحة العلم التعليمية';
+    el.querySelector('[data-field="student"]').textContent = userName || 'الطالب';
+    el.querySelector('[data-field="date"]').textContent = new Date().toLocaleDateString('ar-EG');
+    el.querySelector('[data-field="serial"]').textContent = serial;
+    el.querySelector('[data-field="qr"]').src = qrDataUrl;
+    el.querySelector('[data-field="total"]').textContent = `${sum.totalScore} / ${sum.totalMarks} (${sum.percentage}%)`;
+
+    // بناء جدول الامتحانات
+    const tbody = el.querySelector('[data-field="rows"]');
+    tbody.innerHTML = rows.map(({ exam, att }, i) => {
+      const passPct = (exam.pass_marks / (exam.total_marks || 1)) * 100;
+      const isPass = (att.percentage || 0) >= passPct;
+      const submitted = att.submitted_at 
+        ? new Date(att.submitted_at).toLocaleString('ar-EG', { 
+            year: 'numeric', month: 'short', day: 'numeric', 
+            hour: '2-digit', minute: '2-digit' 
+          }) 
+        : '-';
+      
+      return `
         <tr>
-          <td style="padding:6px;border:1px solid #ddd;">${i + 1}</td>
+          <td style="padding:6px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
           <td style="padding:6px;border:1px solid #ddd;">${exam.title || '-'}</td>
           <td style="padding:6px;border:1px solid #ddd;">${exam.subject || '-'}</td>
-          <td style="padding:6px;border:1px solid #ddd; text-align:center;">${att.score}/${exam.total_marks}</td>
-          <td style="padding:6px;border:1px solid #ddd; text-align:center;">${(att.percentage || 0).toFixed(1)}%</td>
-          <td style="padding:6px;border:1px solid #ddd; text-align:center;">${isPass ? 'ناجح' : 'راسب'}</td>
-          <td style="padding:6px;border:1px solid #ddd; text-align:center;">${submitted}</td>
+          <td style="padding:6px;border:1px solid #ddd;text-align:center;font-weight:bold;">${att.score}/${exam.total_marks}</td>
+          <td style="padding:6px;border:1px solid #ddd;text-align:center;">${(att.percentage || 0).toFixed(1)}%</td>
+          <td style="padding:6px;border:1px solid #ddd;text-align:center;color:${isPass ? '#2e7d32' : '#c62828'};font-weight:bold;">
+            ${isPass ? '✓ ناجح' : '✗ راسب'}
+          </td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:10px;">${submitted}</td>
         </tr>
       `;
-      }).join('');
+    }).join('');
 
-      const canvas = await html2canvas(el, { scale: 2 });
-      const img = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-      const w = pdf.internal.pageSize.getWidth(); const h = pdf.internal.pageSize.getHeight();
-      pdf.addImage(img, 'PNG', 0, 0, w, h);
-      pdf.save(`certificate-${serial}.pdf`);
-      toast.success('تم تحميل الشهادة بنجاح.');
-    } catch (e) {
-      console.error(e); toast.error('تعذّر توليد الشهادة.');
-    } finally { setIsCertGenerating(false); }
-  };
+    // ✅ انتظار تحميل الخطوط والصور قبل التصوير
+    await document.fonts.ready;
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // تحويل الشهادة لصورة بجودة عالية
+    console.log('📸 جاري تصوير صفحة الشهادة...');
+    const canvas1 = await html2canvas(el, { 
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 0
+    });
+    const img1 = canvas1.toDataURL('image/png', 0.95);
+    console.log('✅ تم تصوير الشهادة بنجاح');
+
+    // ========== إنشاء PDF ==========
+    const pdf = new jsPDF({ 
+      orientation: 'portrait', 
+      unit: 'pt', 
+      format: 'a4',
+      compress: true
+    });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    
+    // إضافة صفحة الشهادة
+    pdf.addImage(img1, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
+
+    // ========== جلب الأخطاء ==========
+    const attemptIds = rows.map(r => r.att.id);
+    console.log(`🔍 جاري جلب الأخطاء لـ ${attemptIds.length} محاولة...`);
+    
+    const { data: wrongAnswers, error: wrongErr } = await supabase
+      .from('exam_answers')
+      .select(`
+        id,
+        attempt_id,
+        question_id,
+        selected_answer,
+        exam_questions!inner (
+          id,
+          question_text,
+          correct_answer,
+          option_a,
+          option_b,
+          option_c,
+          option_d,
+          question_type
+        )
+      `)
+      .in('attempt_id', attemptIds)
+      .eq('is_correct', false)
+      .order('attempt_id', { ascending: true });
+
+    if (wrongErr) {
+      console.error('❌ خطأ في جلب الأخطاء:', wrongErr);
+      throw new Error(`فشل جلب الأخطاء: ${wrongErr.message}`);
+    }
+
+    // التحقق من وجود أخطاء
+    const hasErrors = wrongAnswers?.length > 0;
+    console.log(`📊 عدد الأخطاء المستردة: ${wrongAnswers?.length || 0}`);
+
+    // ========== صفحة 2: تحليل الأخطاء ==========
+    if (hasErrors) {
+      console.log('📝 جاري إنشاء صفحة تحليل الأخطاء...');
+      
+      // تجميع الأخطاء حسب الامتحان
+      const errorsByExam = new Map();
+      
+      wrongAnswers.forEach(ans => {
+        const attempt = rows.find(r => r.att.id === ans.attempt_id);
+        if (!attempt) {
+          console.warn(`⚠️ محاولة غير موجودة: ${ans.attempt_id}`);
+          return;
+        }
+        
+        const examKey = attempt.exam.id;
+        if (!errorsByExam.has(examKey)) {
+          errorsByExam.set(examKey, {
+            examTitle: attempt.exam.title,
+            examSubject: attempt.exam.subject,
+            submittedAt: attempt.att.submitted_at,
+            errors: []
+          });
+        }
+        
+        errorsByExam.get(examKey).errors.push({
+          ...ans,
+          question: ans.exam_questions
+        });
+      });
+
+      console.log(`📚 تم تجميع ${errorsByExam.size} امتحان بأخطاء`);
+
+      // بناء صفحة HTML للأخطاء
+      const errorsPage = document.createElement('div');
+      errorsPage.style.cssText = `
+        width: 794px;
+        min-height: 1123px;
+        background: white;
+        padding: 40px;
+        box-sizing: border-box;
+        font-family: 'Almarai', 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
+        direction: rtl;
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        z-index: -1;
+      `;
+
+      // Header مع تصميم محسّن
+      errorsPage.innerHTML = `
+        <div style="text-align: center; border-bottom: 3px solid #665446; padding-bottom: 20px; margin-bottom: 30px;">
+          <h1 style="color: #665446; font-size: 32px; margin: 0 0 10px 0; font-weight: 700;">
+            📋 تحليل تفصيلي للأخطاء
+          </h1>
+          <p style="color: #333; font-size: 18px; margin: 5px 0; font-weight: 600;">
+            ${userName || 'الطالب'}
+          </p>
+          <div style="display: inline-flex; gap: 20px; margin-top: 10px; font-size: 14px; color: #666;">
+            <span>📊 إجمالي الأخطاء: <strong style="color: #ef5350;">${wrongAnswers.length}</strong></span>
+            <span>📚 عدد الامتحانات: <strong style="color: #665446;">${errorsByExam.size}</strong></span>
+          </div>
+        </div>
+      `;
+
+      // بناء محتوى الأخطاء
+      let errorsHTML = '';
+      let errorCounter = 0;
+
+      Array.from(errorsByExam.values()).forEach((examData, examIdx) => {
+        console.log(`✏️ معالجة امتحان ${examIdx + 1}: "${examData.examTitle}" - ${examData.errors.length} خطأ`);
+        
+        errorsHTML += `
+          <div style="margin-bottom: 30px; page-break-inside: avoid;">
+            <div style="background: linear-gradient(135deg, #665446 0%, #8b6f47 100%); 
+                        padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+              <h2 style="color: white; font-size: 20px; margin: 0 0 8px 0; font-weight: 700;">
+                ${examIdx + 1}. ${examData.examTitle}
+              </h2>
+              <div style="display: flex; gap: 15px; font-size: 13px; color: rgba(255,255,255,0.9);">
+                <span>📚 ${examData.examSubject}</span>
+                <span>❌ ${examData.errors.length} ${examData.errors.length === 1 ? 'خطأ' : 'أخطاء'}</span>
+              </div>
+            </div>
+            <div style="display: grid; gap: 15px;">
+        `;
+
+        examData.errors.forEach((error) => {
+          errorCounter++;
+          const q = error.question;
+          
+          if (!q) {
+            console.warn(`⚠️ سؤال مفقود للخطأ: ${error.id}`);
+            return;
+          }
+
+          const isTrueFalse = q.question_type === 'true_false';
+          
+          // دالة محسّنة لعرض النص
+          const getAnswerDisplay = (answer) => {
+            if (!answer) return { text: 'لم يتم الإجابة', color: '#999' };
+            
+            if (isTrueFalse) {
+              return answer === 'TRUE' 
+                ? { text: '✓ صح', color: '#2e7d32' }
+                : { text: '✗ خطأ', color: '#c62828' };
+            }
+            
+            const options = {
+              'A': { text: q.option_a, label: 'أ' },
+              'B': { text: q.option_b, label: 'ب' },
+              'C': { text: q.option_c, label: 'ج' },
+              'D': { text: q.option_d, label: 'د' }
+            };
+            
+            const opt = options[answer];
+            return opt 
+              ? { text: `${opt.label}) ${opt.text || 'نص غير متوفر'}`, color: '#333' }
+              : { text: answer, color: '#666' };
+          };
+
+          const userAnswer = getAnswerDisplay(error.selected_answer);
+          const correctAnswer = getAnswerDisplay(q.correct_answer);
+
+          errorsHTML += `
+            <div style="background: white; border: 2px solid #ffcdd2; border-radius: 10px; 
+                        padding: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); 
+                        transition: all 0.3s ease;">
+              
+              <div style="display: flex; gap: 12px; margin-bottom: 15px;">
+                <span style="background: linear-gradient(135deg, #ef5350 0%, #e53935 100%); 
+                             color: white; border-radius: 50%; width: 36px; height: 36px; 
+                             display: flex; align-items: center; justify-content: center; 
+                             font-weight: 700; font-size: 16px; flex-shrink: 0; 
+                             box-shadow: 0 2px 4px rgba(239,83,80,0.3);">
+                  ${errorCounter}
+                </span>
+                <div style="flex: 1;">
+                  <p style="margin: 0; font-size: 16px; color: #222; font-weight: 600; 
+                            line-height: 1.6; word-wrap: break-word;">
+                    ${q.question_text || 'نص السؤال غير متوفر'}
+                  </p>
+                  <span style="display: inline-block; margin-top: 8px; padding: 4px 10px; 
+                               background: ${isTrueFalse ? '#e3f2fd' : '#f3e5f5'}; 
+                               color: ${isTrueFalse ? '#1565c0' : '#6a1b9a'}; 
+                               font-size: 11px; border-radius: 12px; font-weight: 600;">
+                    ${isTrueFalse ? '✓/✗ صح أو خطأ' : '🔘 اختيار متعدد'}
+                  </span>
+                </div>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; 
+                          margin-top: 15px;">
+                <div style="background: #ffebee; padding: 14px; border-radius: 8px; 
+                            border-left: 4px solid #ef5350;">
+                  <div style="color: #c62828; font-size: 12px; font-weight: 700; 
+                             margin-bottom: 6px; letter-spacing: 0.3px;">
+                    ❌ إجابتك الخاطئة
+                  </div>
+                  <div style="color: ${userAnswer.color}; font-size: 14px; 
+                             font-weight: 500; line-height: 1.5; word-wrap: break-word;">
+                    ${userAnswer.text}
+                  </div>
+                </div>
+                
+                <div style="background: #e8f5e9; padding: 14px; border-radius: 8px; 
+                            border-left: 4px solid #4caf50;">
+                  <div style="color: #2e7d32; font-size: 12px; font-weight: 700; 
+                             margin-bottom: 6px; letter-spacing: 0.3px;">
+                    ✓ الإجابة الصحيحة
+                  </div>
+                  <div style="color: ${correctAnswer.color}; font-size: 14px; 
+                             font-weight: 500; line-height: 1.5; word-wrap: break-word;">
+                    ${correctAnswer.text}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        errorsHTML += `
+            </div>
+          </div>
+        `;
+      });
+
+      errorsPage.innerHTML += errorsHTML;
+
+      // إضافة footer
+      errorsPage.innerHTML += `
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0; 
+                    text-align: center; color: #666; font-size: 12px;">
+          <p style="margin: 5px 0;">
+            💡 <strong>نصيحة:</strong> راجع هذه الأخطاء جيداً لتحسين أدائك في المستقبل
+          </p>
+          <p style="margin: 5px 0; color: #999;">
+            تم إنشاء هذا التقرير بواسطة واحة العلم التعليمية
+          </p>
+        </div>
+      `;
+
+      // إضافة للـ DOM
+      document.body.appendChild(errorsPage);
+
+      // انتظار التحميل الكامل
+      await document.fonts.ready;
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // تصوير صفحة الأخطاء
+      console.log('📸 جاري تصوير صفحة الأخطاء...');
+      const canvas2 = await html2canvas(errorsPage, { 
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 0,
+        onclone: (clonedDoc) => {
+          // تأكد من تطبيق الأنماط على النسخة المستنسخة
+          const clonedEl = clonedDoc.querySelector('[style*="left: -9999px"]');
+          if (clonedEl) {
+            clonedEl.style.left = '0';
+            clonedEl.style.position = 'static';
+          }
+        }
+      });
+      
+      const img2 = canvas2.toDataURL('image/png', 0.95);
+      console.log('✅ تم تصوير صفحة الأخطاء بنجاح');
+
+      // إضافة صفحة جديدة
+      pdf.addPage();
+      pdf.addImage(img2, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
+      console.log('✅ تم إضافة صفحة الأخطاء إلى PDF');
+
+      // تنظيف
+      document.body.removeChild(errorsPage);
+      console.log('🧹 تم تنظيف DOM');
+    } else {
+      console.log('ℹ️ لا توجد أخطاء - تم إنشاء الشهادة فقط');
+    }
+
+    // ========== حفظ الملف ==========
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const fileName = `شهادة-${userName?.replace(/\s+/g, '-') || 'طالب'}-${timestamp}.pdf`;
+    pdf.save(fileName);
+    
+    // رسالة نجاح مخصصة
+    const successMessage = hasErrors 
+      ? `✅ تم تحميل الشهادة مع تحليل ${wrongAnswers.length} ${wrongAnswers.length === 1 ? 'خطأ' : 'خطأ'} بنجاح!` 
+      : '✅ تم تحميل الشهادة بنجاح! (أداء ممتاز بدون أخطاء 🎉)';
+    
+    console.log(`💾 تم حفظ الملف: ${fileName}`);
+    toast.success(successMessage);
+
+  } catch (error) {
+    console.error('❌ خطأ حرج في توليد الشهادة:', error);
+    
+    // رسالة خطأ أكثر وضوحاً
+    let errorMessage = 'تعذّر توليد الشهادة';
+    if (error.message?.includes('fetch')) {
+      errorMessage = 'خطأ في الاتصال بقاعدة البيانات';
+    } else if (error.message?.includes('canvas')) {
+      errorMessage = 'خطأ في معالجة الصورة';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    toast.error(`${errorMessage} ❌`);
+  } finally {
+    setIsCertGenerating(false);
+  }
+};
 
   return (
     <AnimatedBackground className="min-h-screen" dir="rtl">

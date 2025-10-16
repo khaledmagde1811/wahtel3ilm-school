@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Users, BookOpen, GraduationCap, BarChart3, Search, RefreshCw, Download } from 'lucide-react';
 import { supabase } from '../../Utilities/supabaseClient';
+import StudentWrongAnswersDisplay from './StudentWrongAnswersDisplay';
 
 /**
  * DatabaseStatistics (Enhanced)
@@ -484,6 +485,7 @@ const DatabaseStatistics = () => {
           </div>
         )}
       </div>
+      <StudentWrongAnswersDisplay/>
     </div>
   );
 };
