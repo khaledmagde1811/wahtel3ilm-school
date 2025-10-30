@@ -83,7 +83,7 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
   return (
     <div className="px-2 group/container">
       <div
-        className={`relative bg-gradient-to-br from-white via-white/98 to-amber-50/30 rounded-3xl shadow-lg overflow-hidden transition-all duration-700 h-[420px] cursor-pointer border border-white/60 backdrop-blur-sm ${
+        className={`relative bg-gradient-to-br from-white via-white/98 to-amber-50/30 rounded-3xl shadow-lg overflow-hidden transition-all duration-700 h-auto md:h-[420px] cursor-pointer border border-white/60 backdrop-blur-sm ${
           isHovered 
             ? 'shadow-2xl scale-[1.05] -translate-y-4 shadow-amber-500/20' 
             : 'hover:shadow-xl group-hover/container:scale-[1.02]'
@@ -144,14 +144,14 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
         </div>
 
         {/* Icon Container */}
-        <div className="relative h-56 flex items-center justify-center bg-gradient-to-br from-slate-50/50 via-amber-50/30 to-orange-50/40 overflow-hidden">
+  <div className="relative h-44 md:h-56 flex items-center justify-center bg-gradient-to-br from-slate-50/50 via-amber-50/30 to-orange-50/40 overflow-hidden">
           {/* Animated Background Circle */}
           <div className={`absolute w-40 h-40 bg-gradient-to-br ${courseIconData.gradient} rounded-full opacity-10 transition-all duration-1000 ${
             isHovered ? 'scale-150 rotate-180' : 'scale-100 rotate-0'
           }`} />
           
           {/* Main Icon Circle */}
-          <div className={`relative w-28 h-28 rounded-full bg-gradient-to-br ${courseIconData.gradient} flex items-center justify-center transition-all duration-700 shadow-2xl ${
+          <div className={`relative w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br ${courseIconData.gradient} flex items-center justify-center transition-all duration-700 shadow-2xl ${
             isHovered ? 'scale-125 rotate-12 shadow-3xl' : 'shadow-xl'
           }`}>
             {courseIconData.icon}
@@ -174,7 +174,7 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
 
         {/* Content Section */}
         <div className="p-6 space-y-4">
-          <h3 className={`text-[#665446] text-xl font-bold font-['Almarai'] transition-all duration-500 line-clamp-2 leading-relaxed ${
+          <h3 className={`text-[#665446] text-lg sm:text-xl font-bold font-['Almarai'] transition-all duration-500 line-clamp-2 leading-relaxed ${
             isHovered ? 'text-[#8B7355] transform translate-x-2' : ''
           }`}>
             {course.name}
@@ -191,7 +191,7 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
           {/* Enhanced Stats Row */}
           <div className={`flex items-center justify-between text-xs transition-all duration-700 ${
             isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-          }`}>
+          } sm:opacity-100 sm:translate-y-0`}>
             <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-sky-50 text-blue-600 px-3 py-2 rounded-xl shadow-sm border border-blue-100">
               <Users className="w-4 h-4" />
               <span className="font-semibold">{totalStudents || 0}</span>
@@ -398,7 +398,7 @@ const AboutCourse = () => {
         {/* Enhanced Header */}
         <div className="text-center mb-20 space-y-8">
           <div className="inline-block relative">
-            <h2 className="text-[#665446] text-7xl md:text-8xl font-bold font-['Almarai'] relative">
+            <h2 className="text-[#665446] text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold font-['Almarai'] relative">
               الدورات المميزة
               <div className="absolute -bottom-3 left-0 right-0 h-2 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 rounded-full animate-pulse shadow-lg" />
               
@@ -423,7 +423,7 @@ const AboutCourse = () => {
 <div
   className={`bg-gradient-to-r ${stat.color} text-white rounded-2xl p-6 shadow-xl transform transition-all duration-500 hover:scale-110 hover:shadow-2xl border border-white/20 backdrop-blur-sm`}
 >
-                  <div className="text-4xl font-bold font-['Almarai'] mb-2">{stat.value}</div>
+                  <div className="text-3xl sm:text-4xl font-bold font-['Almarai'] mb-2">{stat.value}</div>
                   <div className="text-sm font-['Almarai'] opacity-90">{stat.label}</div>
                 </div>
               </div>
@@ -473,7 +473,7 @@ const AboutCourse = () => {
             <div className="relative z-10">
               <div className="flex items-center justify-center gap-3 mb-6">
                 <Sparkles className="w-8 h-8 text-amber-500 animate-pulse" />
-                <h3 className="text-3xl font-bold text-[#665446] font-['Almarai']">
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#665446] font-['Almarai']">
                   ابدأ رحلتك التعليمية اليوم
                 </h3>
                 <Sparkles className="w-8 h-8 text-amber-500 animate-pulse" />
