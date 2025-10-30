@@ -16,6 +16,9 @@ import LessonPage from './Pages/LessonPage';
 import AdminDashboard from "./Pages/AdminPagde/AdminDashboard";
 import ContantLevel from "./Pages/ContantLevel";
 import ResetPassword from "./Pages/ResetPassword ";
+import ExamForm from './Pages/AdvancedExam/ExamForm';
+import ExamTaking from './Pages/AdvancedExam/ExamTaking';
+import ExamResult from './Pages/AdvancedExam/ExamResult';
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
@@ -103,6 +106,9 @@ function App() {
             <Route path="/community" element={<Community />} />
             <Route path="/monthlyExams" element={<MonthlyExams/>} />
             <Route path="/update-password" element={<UpdatePassword />} />
+            <Route path="/exam/new" element={<ExamForm />} />
+<Route path="/exam/:examId" element={<ExamTaking />} />
+<Route path="/exam-result/:attemptId" element={<ExamResult />} />
           </Routes>
         </div>
         <Footer />

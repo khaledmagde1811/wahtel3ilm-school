@@ -83,7 +83,7 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
   return (
     <div className="px-2 group/container">
       <div
-        className={`relative bg-gradient-to-br from-white via-white/98 to-amber-50/30 rounded-3xl shadow-lg overflow-hidden transition-all duration-700 h-[420px] cursor-pointer border border-white/60 backdrop-blur-sm ${
+        className={`relative bg-gradient-to-br from-white via-white/98 to-amber-50/30 rounded-3xl shadow-lg overflow-hidden transition-all duration-700 h-auto md:h-[420px] cursor-pointer border border-white/60 backdrop-blur-sm ${
           isHovered 
             ? 'shadow-2xl scale-[1.05] -translate-y-4 shadow-amber-500/20' 
             : 'hover:shadow-xl group-hover/container:scale-[1.02]'
@@ -92,8 +92,8 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
         onMouseLeave={() => setIsHovered(false)}
         onClick={handleCourseClick}
       >
-        {/* Animated Background Patterns */}
-        <div className="absolute inset-0 overflow-hidden">
+  {/* Animated Background Patterns (hidden on small screens to reduce clutter) */}
+  <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block">
         <div
   className={`absolute inset-0 bg-gradient-to-br from-transparent via-amber-50/20 to-orange-50/30 opacity-0 transition-all duration-700 ${isHovered ? 'opacity-100' : ''}`}
 />
@@ -144,14 +144,14 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
         </div>
 
         {/* Icon Container */}
-        <div className="relative h-56 flex items-center justify-center bg-gradient-to-br from-slate-50/50 via-amber-50/30 to-orange-50/40 overflow-hidden">
+  <div className="relative h-44 md:h-56 flex items-center justify-center bg-gradient-to-br from-slate-50/50 via-amber-50/30 to-orange-50/40 overflow-hidden">
           {/* Animated Background Circle */}
           <div className={`absolute w-40 h-40 bg-gradient-to-br ${courseIconData.gradient} rounded-full opacity-10 transition-all duration-1000 ${
             isHovered ? 'scale-150 rotate-180' : 'scale-100 rotate-0'
           }`} />
           
           {/* Main Icon Circle */}
-          <div className={`relative w-28 h-28 rounded-full bg-gradient-to-br ${courseIconData.gradient} flex items-center justify-center transition-all duration-700 shadow-2xl ${
+          <div className={`relative w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-full bg-gradient-to-br ${courseIconData.gradient} flex items-center justify-center transition-all duration-700 shadow-2xl ${
             isHovered ? 'scale-125 rotate-12 shadow-3xl' : 'shadow-xl'
           }`}>
             {courseIconData.icon}
@@ -174,7 +174,7 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
 
         {/* Content Section */}
         <div className="p-6 space-y-4">
-          <h3 className={`text-[#665446] text-xl font-bold font-['Almarai'] transition-all duration-500 line-clamp-2 leading-relaxed ${
+          <h3 className={`text-[#665446] text-lg sm:text-xl font-bold font-['Almarai'] transition-all duration-500 line-clamp-2 leading-relaxed ${
             isHovered ? 'text-[#8B7355] transform translate-x-2' : ''
           }`}>
             {course.name}
@@ -188,10 +188,8 @@ const CourseCard = ({ course, totalStudents, totalLessons }) => {
             </p>
           )}
           
-          {/* Enhanced Stats Row */}
-          <div className={`flex items-center justify-between text-xs transition-all duration-700 ${
-            isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-          }`}>
+          {/* Enhanced Stats Row (always visible on small screens) */}
+          <div className={`flex items-center justify-between text-xs transition-all duration-700 opacity-100`}>
             <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-sky-50 text-blue-600 px-3 py-2 rounded-xl shadow-sm border border-blue-100">
               <Users className="w-4 h-4" />
               <span className="font-semibold">{totalStudents || 0}</span>
@@ -354,7 +352,7 @@ const AboutCourse = () => {
 
   if (loading) {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-br from-[#CDC0B6] via-[#D4C7BC] to-[#CDC0B6] py-20 px-4 flex items-center justify-center">
+      <div className="w-full min-h-[60vh] sm:min-h-screen bg-gradient-to-br from-[#CDC0B6] via-[#D4C7BC] to-[#CDC0B6] py-12 px-4 flex items-center justify-center">
         <div className="text-center space-y-6">
           <div className="relative">
             <Loader className="w-16 h-16 text-[#665446] animate-spin mx-auto" />
@@ -368,7 +366,7 @@ const AboutCourse = () => {
 
   if (error) {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-br from-[#CDC0B6] via-[#D4C7BC] to-[#CDC0B6] py-20 px-4 flex items-center justify-center">
+      <div className="w-full min-h-[60vh] sm:min-h-screen bg-gradient-to-br from-[#CDC0B6] via-[#D4C7BC] to-[#CDC0B6] py-12 px-4 flex items-center justify-center">
         <div className="text-center space-y-6 bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl">
           <div className="text-red-500 text-8xl mb-6 animate-bounce">⚠</div>
           <p className="text-red-600 text-2xl font-['Almarai'] font-bold">{error}</p>
@@ -384,7 +382,7 @@ const AboutCourse = () => {
   }
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-[#CDC0B6] via-[#D4C7BC] to-[#CDC0B6] py-20 px-4 relative overflow-hidden">
+    <div className="w-full min-h-[60vh] sm:min-h-screen bg-gradient-to-br from-[#CDC0B6] via-[#D4C7BC] to-[#CDC0B6] py-12 md:py-20 px-4 relative overflow-hidden">
       
       {/* Enhanced Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -396,9 +394,9 @@ const AboutCourse = () => {
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Enhanced Header */}
-        <div className="text-center mb-20 space-y-8">
+        <div className="text-center mb-12 md:mb-20 space-y-6 md:space-y-8">
           <div className="inline-block relative">
-            <h2 className="text-[#665446] text-7xl md:text-8xl font-bold font-['Almarai'] relative">
+            <h2 className="text-[#665446] text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold font-['Almarai'] relative">
               الدورات المميزة
               <div className="absolute -bottom-3 left-0 right-0 h-2 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 rounded-full animate-pulse shadow-lg" />
               
@@ -412,7 +410,7 @@ const AboutCourse = () => {
           </p>
           
           {/* Enhanced Stats Counter */}
-          <div className="flex justify-center items-center gap-12 mt-12 flex-wrap">
+          <div className="flex justify-center items-center gap-6 md:gap-12 mt-8 md:mt-12 flex-wrap">
             {[
               { value: stats.totalCourses, label: 'دورة متاحة', color: 'from-blue-500 to-cyan-500' },
               { value: stats.totalStudents, label: 'طالب مسجل', color: 'from-green-500 to-emerald-500' },
@@ -423,7 +421,7 @@ const AboutCourse = () => {
 <div
   className={`bg-gradient-to-r ${stat.color} text-white rounded-2xl p-6 shadow-xl transform transition-all duration-500 hover:scale-110 hover:shadow-2xl border border-white/20 backdrop-blur-sm`}
 >
-                  <div className="text-4xl font-bold font-['Almarai'] mb-2">{stat.value}</div>
+                  <div className="text-3xl sm:text-4xl font-bold font-['Almarai'] mb-2">{stat.value}</div>
                   <div className="text-sm font-['Almarai'] opacity-90">{stat.label}</div>
                 </div>
               </div>
@@ -431,7 +429,7 @@ const AboutCourse = () => {
           </div>
         </div>
 
-        {/* Enhanced Courses Display */}
+  {/* Enhanced Courses Display */}
         {courses.length === 0 ? (
           <div className="text-center py-20 bg-white/60 backdrop-blur-sm rounded-3xl shadow-2xl">
             <BookOpen className="w-20 h-20 text-gray-400 mx-auto mb-6 animate-bounce" />
@@ -465,21 +463,21 @@ const AboutCourse = () => {
         )}
 
         {/* Enhanced Call to Action */}
-        <div className="text-center mt-20">
-          <div className="bg-gradient-to-br from-white/90 via-white/80 to-amber-50/60 backdrop-blur-md rounded-3xl p-10 shadow-2xl max-w-4xl mx-auto border border-white/30 relative overflow-hidden">
+        <div className="text-center mt-12 md:mt-20">
+          <div className="bg-gradient-to-br from-white/90 via-white/80 to-amber-50/60 backdrop-blur-md rounded-3xl p-6 md:p-10 shadow-2xl max-w-4xl mx-auto border border-white/30 relative overflow-hidden">
             {/* Background Pattern */}
             <div className="absolute inset-0 bg-gradient-to-r from-amber-100/20 via-transparent to-orange-100/20" />
             
             <div className="relative z-10">
               <div className="flex items-center justify-center gap-3 mb-6">
                 <Sparkles className="w-8 h-8 text-amber-500 animate-pulse" />
-                <h3 className="text-3xl font-bold text-[#665446] font-['Almarai']">
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#665446] font-['Almarai']">
                   ابدأ رحلتك التعليمية اليوم
                 </h3>
                 <Sparkles className="w-8 h-8 text-amber-500 animate-pulse" />
               </div>
               
-              <p className="text-[#8B7355] font-['Almarai'] text-xl mb-8 leading-relaxed">
+              <p className="text-[#8B7355] font-['Almarai'] text-lg md:text-xl mb-6 md:mb-8 leading-relaxed">
                 انضم إلى آلاف الطلاب واكتسب المعرفة الشرعية على أيدي نخبة من المتخصصين في بيئة تفاعلية متطورة
               </p>
               

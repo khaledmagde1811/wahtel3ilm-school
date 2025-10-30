@@ -127,11 +127,16 @@ useEffect(() => {
     { to: "/goals", label: "أهداف المدرسة", icon: Target },
     { to: "/articlesManagement", label: "المقالات و التكليف", icon: FileText, notifType: "newArticles" },
     { to: "/community", label: "المجتمع", icon: MessageSquare, notifType: "newPosts" },
-{ to: "/monthlyExams", label: "اختبارات الشهر", icon: BookOpenCheck, notifType: "newExams" }   ];
+    { to: "/monthlyExams", label: "اختبارات الشهر", icon: BookOpenCheck, notifType: "newExams" },
+  ];
 
   const adminMenuItems = [
     { to: "/admin-dashboard", label: "لوحة تحكم الأدمن", icon: Settings },
-    { to: "/statistics", label: "الإحصائيات", icon: BarChart3 }
+    { to: "/statistics", label: "الإحصائيات", icon: BarChart3 },
+        { to: "/admin-dashboard/exams", label: "إدارة الامتحانات", icon: Settings, adminOnly: true },
+            { to: "/exam/new", label: "إنشاء امتحان جديد", icon: FileText },
+
+
   ];
 
   return (
@@ -167,6 +172,9 @@ useEffect(() => {
             {isMainMenuOpen && (
               <div className="absolute right-0 mt-2 w-64 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-fadeIn">
                 {mainMenuItems.map((item, index) => {
+                  // تحقق من صلاحية عرض العنصر
+                  if (item.adminOnly && role !== "admin") return null;
+
                   const Icon = item.icon;
                   const notifCount = item.notifType ? (notifications?.[item.notifType] ?? 0) : 0;
 
@@ -174,12 +182,14 @@ useEffect(() => {
                     <Link
                       key={index}
                       to={item.to}
-                      className="flex items-center justify-between gap-2 px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition duration-200"
+                      className={`flex items-center justify-between gap-2 px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition duration-200 ${
+                        item.adminOnly ? "text-[#D97706]" : ""
+                      }`}
                       onClick={() => {
                         setIsMainMenuOpen(false);
-                        // عند الضغط نصفر العداد في الcontext للصفحات المعينة
                         if (item.notifType === "newArticles") markArticlesAsVisited();
                         if (item.notifType === "newPosts") markCommunityAsVisited();
+                        if (item.notifType === "newExams") markExamsAsVisited();
                       }}
                     >
                       <div className="flex items-center gap-2">
@@ -303,6 +313,9 @@ useEffect(() => {
 
           <ul className="space-y-2">
             {mainMenuItems.map((item, index) => {
+              // تحقق من صلاحية عرض العنصر في النسخة المحمولة
+              if (item.adminOnly && role !== "admin") return null;
+
               const Icon = item.icon;
               const notifCount = item.notifType ? (notifications?.[item.notifType] ?? 0) : 0;
 
@@ -310,11 +323,14 @@ useEffect(() => {
                 <li key={index}>
                   <Link
                     to={item.to}
-                    className="flex items-center justify-between gap-3 px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition"
+                    className={`flex items-center justify-between gap-3 px-4 py-2 text-[#5A4633] hover:bg-gradient-to-r hover:from-[#fdf6ec] hover:to-[#f9ede1] rounded-md transition ${
+                      item.adminOnly ? "text-[#D97706]" : ""
+                    }`}
                     onClick={() => {
                       toggleNavbar();
                       if (item.notifType === "newArticles") markArticlesAsVisited();
                       if (item.notifType === "newPosts") markCommunityAsVisited();
+                      if (item.notifType === "newExams") markExamsAsVisited();
                     }}
                   >
                     <div className="flex items-center gap-3">

@@ -254,16 +254,25 @@ export const NotificationProvider = ({ children }) => {
         const meAuthId = currentUser?.id ? currentUser.id.toString() : null;
         const meStudentId = currentUserId ? currentUserId.toString() : null;
 
-        const base = supabase
-          .from('exam_attempts')
-          .select('*', { count: 'exact', head: true })
-          // الطالب ممكن يبقى محفوظ بـ auth_id أو students.id في عمود student_id حسب تنفيذك
-          .or(`student_id.eq.${meAuthId},student_id.eq.${meStudentId}`);
+        // بناء شرط OR بشكل آمن — فقط أضف شروط غير فارغة
+        const orConds = [];
+        if (meAuthId) orConds.push(`student_id.eq.${meAuthId}`);
+        if (meStudentId) orConds.push(`student_id.eq.${meStudentId}`);
 
-        if (lastExamsVisit) base.gt('updated_at', lastExamsVisit);
+        if (orConds.length === 0) {
+          // لا يوجد معرف صالح — لا توجد نتائج
+          myResultsReadyCount = 0;
+        } else {
+          let base = supabase
+            .from('exam_attempts')
+            .select('*', { count: 'exact', head: true })
+            .or(orConds.join(','));
 
-        const { count, error } = await base;
-        if (!error) myResultsReadyCount = count || 0;
+          if (lastExamsVisit) base = base.gt('updated_at', lastExamsVisit);
+
+          const { count, error } = await base;
+          if (!error) myResultsReadyCount = count || 0;
+        }
       }
 
       console.log('إحصائيات الإشعارات:', {

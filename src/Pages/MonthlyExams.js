@@ -4,9 +4,10 @@ import { supabase } from '../Utilities/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import AnimatedBackground from '../Utilities/AnimatedBackground';
 import {
-  FileText, Plus, Trash2, Eye, Clock, Calendar,
+  FileText, Plus, Trash2, Eye, Clock, Calendar, Upload,
   CheckCircle, XCircle, Users, TrendingUp, X,
-  Search, ChevronLeft, ChevronRight
+  Search, ChevronLeft, ChevronRight, Edit3, Save,
+  MessageSquare, Award
 } from 'lucide-react';
 // داخل generateAllExamsCertificate()
 const [{ default: html2canvas }, jspdfMod, { default: QRCode }] = await Promise.all([
@@ -25,9 +26,64 @@ const CARD_BG = '#F5EDE2';
 const DEFAULT_DURATION_MIN = 60;
 const RESULT_VISIBILITY_HOURS = 2;
 
+// تصنيفات الأخطاء
+const ERROR_TYPES = {
+  CONCEPT_MISUNDERSTANDING: 'concept_misunderstanding', // خطأ في فهم المفهوم
+  CALCULATION_ERROR: 'calculation_error', // خطأ حسابي
+  CARELESS_MISTAKE: 'careless_mistake', // خطأ غير مقصود
+  KNOWLEDGE_GAP: 'knowledge_gap', // فجوة معرفية
+  LANGUAGE_BARRIER: 'language_barrier', // صعوبة لغوية
+};
+
+// ترجمة أنواع الأخطاء
+const ERROR_TYPE_LABELS = {
+  [ERROR_TYPES.CONCEPT_MISUNDERSTANDING]: 'خطأ في فهم المفهوم',
+  [ERROR_TYPES.CALCULATION_ERROR]: 'خطأ حسابي',
+  [ERROR_TYPES.CARELESS_MISTAKE]: 'خطأ غير مقصود',
+  [ERROR_TYPES.KNOWLEDGE_GAP]: 'فجوة معرفية',
+  [ERROR_TYPES.LANGUAGE_BARRIER]: 'صعوبة لغوية',
+};
+
+// أنواع الأسئلة
+const QUESTION_TYPES = {
+  MULTIPLE_CHOICE: 'multiple_choice',
+  TRUE_FALSE: 'true_false',
+  CORRECT_UNDERLINED: 'correct_underlined',
+  ESSAY: 'essay'
+};
+
+// مستويات الصعوبة
+const DIFFICULTY_LEVELS = {
+  EASY: 'easy',
+  MEDIUM: 'medium',
+  HARD: 'hard'
+};
+
+// خيارات التقييم
+const GRADING_OPTIONS = {
+  AUTO: 'auto',
+  MANUAL: 'manual',
+  HYBRID: 'hybrid'
+};
+
+// ترجمة أنواع الأسئلة
+const QUESTION_TYPE_LABELS = {
+  [QUESTION_TYPES.MULTIPLE_CHOICE]: 'اختيار متعدد',
+  [QUESTION_TYPES.TRUE_FALSE]: 'صح وخطأ',
+  [QUESTION_TYPES.CORRECT_UNDERLINED]: 'تصحيح ما تحته خط',
+  [QUESTION_TYPES.ESSAY]: 'مقالي'
+};
+
 const ENGLISH_OPTIONS = ['A', 'B', 'C', 'D'];
 const OPTION_DISPLAY = { 'A': 'أ', 'B': 'ب', 'C': 'ج', 'D': 'د' };
 const OPTION_TO_ENGLISH = { 'أ': 'A', 'ب': 'B', 'ج': 'C', 'د': 'D' };
+
+// حالات المحاولة
+const ATTEMPT_STATUS = {
+  IN_PROGRESS: 'in_progress',
+  SUBMITTED: 'submitted',
+  GRADED: 'graded'
+};
 
 const MonthlyExams = () => {
   const navigate = useNavigate();
@@ -46,12 +102,24 @@ const MonthlyExams = () => {
   const [selectedExam, setSelectedExam] = useState(null);
   const [examAttempts, setExamAttempts] = useState([]);
 
+  // حالة التقرير المفصل
+  const [showDetailedReport, setShowDetailedReport] = useState(false);
+  const [detailedPerformance, setDetailedPerformance] = useState(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+
   const [takingExam, setTakingExam] = useState(null);
   const [takingAnswers, setTakingAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
   const timerRef = useRef(null);
   const [isCertGenerating, setIsCertGenerating] = useState(false);
   const certRef = useRef(null);
+
+  // حالة التصحيح اليدوي
+  const [showGradingModal, setShowGradingModal] = useState(false);
+  const [currentGradingAttempt, setCurrentGradingAttempt] = useState(null);
+  const [gradingData, setGradingData] = useState({});
+  const [gradingFeedback, setGradingFeedback] = useState({});
+  const [isGradingSaving, setIsGradingSaving] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
@@ -69,25 +137,57 @@ const MonthlyExams = () => {
     description: '',
     month: '',
     subject: '',
+    course_id: null,
+    lesson_id: null,
     duration_minutes: DEFAULT_DURATION_MIN,
     total_marks: 100,
-    pass_marks: 50,
+    passing_score: 50,
     start_date: '',
     end_date: '',
     level_scope: 'shared',
-    is_active: true
+    is_active: true,
+    allow_review: true,
+    shuffle_questions: false,
+    shuffle_answers: false,
+    attempts_allowed: 1,
+    grading_scheme: {
+      auto_grade: true,
+      manual_review_needed: false,
+      partial_credit: false
+    },
+    settings: {
+      show_explanation: true,
+      time_per_question: null,
+      prevent_backward_navigation: false,
+      randomize_options: true
+    }
   });
 
   const formRef = useRef(null);
 
   const [questions, setQuestions] = useState([{
     question_text: '',
-    option_a: '',
-    option_b: '',
-    option_c: '',
-    option_d: '',
+    question_type: 'multiple_choice',
+    options: ['', '', '', ''],
     correct_answer: 'A',
-    marks: 1
+    max_marks: 1,
+    explanation: '',
+    image_url: '',
+    grading_rubric: '',
+    model_answer: '',
+    topic: '',
+    difficulty_level: 'medium',
+    time_limit: null,
+    tags: [],
+    feedback: {
+      correct: '',
+      incorrect: ''
+    },
+    metadata: {
+      source: '',
+      category: '',
+      skill_level: 'beginner'
+    }
   }]);
   const [numQuestions, setNumQuestions] = useState(1);
 
@@ -101,8 +201,40 @@ const MonthlyExams = () => {
     }
   }, [showCreateForm]);
 
+  // جلب الكورسات والدروس
+  const fetchCoursesAndLessons = async () => {
+    try {
+      // جلب الكورسات
+      const { data: coursesData, error: coursesError } = await supabase
+        .from('courses')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (coursesError) throw coursesError;
+      setCourses(coursesData || []);
+
+      // جلب الدروس إذا تم اختيار كورس
+      if (examForm.course_id) {
+        const { data: lessonsData, error: lessonsError } = await supabase
+          .from('lessons')
+          .select('*')
+          .eq('course_id', examForm.course_id)
+          .order('created_at', { ascending: false });
+
+        if (lessonsError) throw lessonsError;
+        setLessons(lessonsData || []);
+      }
+    } catch (error) {
+      console.error('خطأ في جلب الكورسات والدروس:', error);
+      toast.error('فشل في جلب الكورسات والدروس');
+    }
+  };
+
   useEffect(() => {
     getCurrentUser();
+    if (userRole === 'admin') {
+      fetchCoursesAndLessons();
+    }
   }, []);
 
   useEffect(() => {
@@ -133,7 +265,7 @@ const MonthlyExams = () => {
             option_c: '',
             option_d: '',
             correct_answer: 'A',
-            marks: 1
+            max_marks: 1
           });
         }
       } else if (n < copy.length) {
@@ -176,6 +308,37 @@ const MonthlyExams = () => {
       navigate('/login');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // جلب الإجابات المقالية التي تحتاج للتصحيح
+  const fetchPendingEssayAnswers = async (examId) => {
+    try {
+      const { data, error } = await supabase
+        .from('student_answers')
+        .select(`
+          *,
+          exam_questions (
+            question_text,
+            model_answer,
+            grading_rubric,
+            max_marks
+          ),
+          exam_attempts (
+            student_name,
+            submitted_at
+          )
+        `)
+        .eq('is_graded', false)
+        .eq('exam_questions.question_type', QUESTION_TYPES.ESSAY)
+        .order('exam_attempts.submitted_at', { ascending: true });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('خطأ في جلب الإجابات المقالية:', error);
+      toast.error('فشل في جلب الإجابات المقالية');
+      return [];
     }
   };
 
@@ -321,6 +484,83 @@ const MonthlyExams = () => {
     return d.toISOString();
   };
 
+  // ✅ دالة توحيد صيغة الأسئلة قبل الحفظ في قاعدة البيانات
+  const prepareQuestionForDatabase = (question, examId, index) => {
+    const baseQuestion = {
+      exam_id: examId,
+      question_text: question.question_text,
+      question_type: question.question_type || QUESTION_TYPES.MULTIPLE_CHOICE,
+      question_order: index + 1,
+      max_marks: Number(question.max_marks || 1),
+      explanation: question.explanation || null,
+      image_url: question.image_url || null,
+      topic: question.topic || null,
+      difficulty_level: question.difficulty_level || 'medium'
+    };
+
+    switch (question.question_type) {
+      case QUESTION_TYPES.TRUE_FALSE:
+        return {
+          ...baseQuestion,
+          options: JSON.stringify(['TRUE', 'FALSE']),
+          correct_answer: question.correct_answer || 'TRUE',
+          option_a: null,
+          option_b: null,
+          option_c: null,
+          option_d: null,
+          model_answer: null,
+          grading_rubric: null
+        };
+
+      case QUESTION_TYPES.MULTIPLE_CHOICE:
+        return {
+          ...baseQuestion,
+          option_a: question.option_a || '',
+          option_b: question.option_b || '',
+          option_c: question.option_c || '',
+          option_d: question.option_d || '',
+          options: JSON.stringify([
+            question.option_a || '',
+            question.option_b || '',
+            question.option_c || '',
+            question.option_d || ''
+          ]),
+          correct_answer: question.correct_answer || 'A',
+          model_answer: null,
+          grading_rubric: null
+        };
+
+      case QUESTION_TYPES.ESSAY:
+        return {
+          ...baseQuestion,
+          model_answer: question.model_answer || '',
+          grading_rubric: question.grading_rubric || '',
+          correct_answer: null,
+          options: null,
+          option_a: null,
+          option_b: null,
+          option_c: null,
+          option_d: null
+        };
+
+      case QUESTION_TYPES.CORRECT_UNDERLINED:
+        return {
+          ...baseQuestion,
+          option_a: question.option_a || '',
+          correct_answer: question.correct_answer || '',
+          options: null,
+          option_b: null,
+          option_c: null,
+          option_d: null,
+          model_answer: null,
+          grading_rubric: null
+        };
+
+      default:
+        return baseQuestion;
+    }
+  };
+
   const isoToInput = (iso) => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -353,7 +593,7 @@ const MonthlyExams = () => {
         description: examForm.description || null,
         month: examForm.month,
         subject: examForm.subject,
-        level_scope: examForm.level_scope || 'shared', // ✅ إضافة المستوى
+        level_scope: examForm.level_scope || 'shared',
         duration_minutes: Number(examForm.duration_minutes) || DEFAULT_DURATION_MIN,
         total_marks: Number(examForm.total_marks) || 100,
         pass_marks: Number(examForm.pass_marks) || 50,
@@ -361,6 +601,7 @@ const MonthlyExams = () => {
         end_date: examForm.end_date ? new Date(examForm.end_date).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         is_active: examForm.is_active ?? true
       };
+
       if (editingExam) {
         // ========== تعديل امتحان موجود ==========
         const { error } = await supabase
@@ -373,19 +614,8 @@ const MonthlyExams = () => {
         // حذف الأسئلة القديمة
         await supabase.from('exam_questions').delete().eq('exam_id', editingExam.id);
 
-        // إضافة الأسئلة الجديدة
-        const questionsToInsert = questions.map((q, index) => ({
-          exam_id: editingExam.id,
-          question_text: q.question_text,
-          question_type: q.question_type || 'multiple_choice',
-          option_a: q.option_a || null,
-          option_b: q.option_b || null,
-          option_c: q.option_c || null,
-          option_d: q.option_d || null,
-          correct_answer: q.correct_answer,
-          marks: Number(q.marks || 1),
-          question_order: index + 1
-        }));
+        // إضافة الأسئلة الجديدة (موحدة)
+        const questionsToInsert = questions.map((q, index) => prepareQuestionForDatabase(q, editingExam.id, index));
 
         if (questionsToInsert.length) {
           const { error: qErr } = await supabase.from('exam_questions').insert(questionsToInsert);
@@ -396,8 +626,6 @@ const MonthlyExams = () => {
 
       } else {
         // ========== إنشاء امتحان جديد ==========
-
-        // ✅ إنشاء الامتحان بدون .single()
         const { data: examDataArray, error: examError } = await supabase
           .from('monthly_exams')
           .insert([{ ...payloadExam, created_by: currentUser.id }])
@@ -408,7 +636,6 @@ const MonthlyExams = () => {
           throw examError;
         }
 
-        // ✅ التحقق من البيانات
         if (!examDataArray || examDataArray.length === 0) {
           console.error('❌ لم يتم إرجاع بيانات الامتحان');
           toast.error('فشل إنشاء الامتحان - تحقق من الصلاحيات في Supabase');
@@ -418,19 +645,8 @@ const MonthlyExams = () => {
         const examData = examDataArray[0];
         console.log('✅ تم إنشاء الامتحان - ID:', examData.id);
 
-        // ✅ إنشاء الأسئلة
-        const questionsToInsert = questions.map((q, index) => ({
-          exam_id: examData.id,
-          question_text: q.question_text,
-          question_type: q.question_type || 'multiple_choice',
-          option_a: q.option_a || null,
-          option_b: q.option_b || null,
-          option_c: q.option_c || null,
-          option_d: q.option_d || null,
-          correct_answer: q.correct_answer,
-          marks: Number(q.marks || 1),
-          question_order: index + 1
-        }));
+        // ✅ إنشاء الأسئلة بصيغة موحدة
+        const questionsToInsert = questions.map((q, index) => prepareQuestionForDatabase(q, examData.id, index));
 
         const { error: questionsError } = await supabase
           .from('exam_questions')
@@ -457,6 +673,76 @@ const MonthlyExams = () => {
     }
   };
 
+  // ✅ دالة توحيد صيغة الأسئلة للعرض في واجهة الطالب
+  const normalizeQuestionForDisplay = (dbQuestion) => {
+    const baseQuestion = {
+      id: dbQuestion.id,
+      question_text: dbQuestion.question_text,
+      question_type: dbQuestion.question_type || QUESTION_TYPES.MULTIPLE_CHOICE,
+      max_marks: Number(dbQuestion.max_marks || 1),
+      explanation: dbQuestion.explanation,
+      image_url: dbQuestion.image_url,
+      correct_answer: dbQuestion.correct_answer
+    };
+
+    switch (dbQuestion.question_type) {
+      case QUESTION_TYPES.TRUE_FALSE:
+        return {
+          ...baseQuestion,
+          options: ['TRUE', 'FALSE']
+        };
+
+      case QUESTION_TYPES.MULTIPLE_CHOICE: {
+        let options = [];
+        if (dbQuestion.options) {
+          try {
+            options = typeof dbQuestion.options === 'string' ? JSON.parse(dbQuestion.options) : dbQuestion.options;
+          } catch {
+            options = [
+              dbQuestion.option_a || '',
+              dbQuestion.option_b || '',
+              dbQuestion.option_c || '',
+              dbQuestion.option_d || ''
+            ];
+          }
+        } else {
+          options = [
+            dbQuestion.option_a || '',
+            dbQuestion.option_b || '',
+            dbQuestion.option_c || '',
+            dbQuestion.option_d || ''
+          ];
+        }
+
+        return {
+          ...baseQuestion,
+          options,
+          option_a: options[0] || dbQuestion.option_a || '',
+          option_b: options[1] || dbQuestion.option_b || '',
+          option_c: options[2] || dbQuestion.option_c || '',
+          option_d: options[3] || dbQuestion.option_d || ''
+        };
+      }
+
+      case QUESTION_TYPES.ESSAY:
+        return {
+          ...baseQuestion,
+          model_answer: dbQuestion.model_answer,
+          grading_rubric: dbQuestion.grading_rubric
+        };
+
+      case QUESTION_TYPES.CORRECT_UNDERLINED:
+        return {
+          ...baseQuestion,
+          option_a: dbQuestion.option_a,
+          correct_answer: dbQuestion.correct_answer
+        };
+
+      default:
+        return baseQuestion;
+    }
+  };
+
   const deleteExam = async (examId) => {
     const userConfirmed = window.confirm('هل أنت متأكد من حذف هذا الامتحان؟');
     if (!userConfirmed) return;
@@ -477,6 +763,60 @@ const MonthlyExams = () => {
     }
   };
 
+  // دالة جلب تقرير الأداء المفصل
+  const fetchDetailedPerformance = async (studentId, examId) => {
+    try {
+      // جلب ملخص الأداء
+      const { data: summary, error: summaryError } = await supabase
+        .from('student_performance_summary')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('exam_id', examId)
+        .single();
+
+      if (summaryError) throw summaryError;
+
+      // جلب تحليل الأخطاء
+      const { data: errors, error: errorsError } = await supabase
+        .from('student_error_analytics')
+        .select(`
+          *,
+          exam_questions (
+            question_text,
+            question_type,
+            max_marks
+          )
+        `)
+        .eq('student_id', studentId)
+        .eq('exam_id', examId);
+
+      if (errorsError) throw errorsError;
+
+      // تحليل الأخطاء حسب النوع
+      const errorsByType = errors.reduce((acc, error) => {
+        const type = error.exam_questions.question_type;
+        if (!acc[type]) {
+          acc[type] = {
+            total: 0,
+            questions: []
+          };
+        }
+        acc[type].total++;
+        acc[type].questions.push(error);
+        return acc;
+      }, {});
+
+      return {
+        summary,
+        errors: errorsByType,
+        recommendations: summary.improvement_areas || []
+      };
+    } catch (error) {
+      console.error('خطأ في جلب تقرير الأداء:', error);
+      throw error;
+    }
+  };
+
   const viewExamResults = async (exam) => {
     try {
       const { data, error } = await supabase
@@ -494,6 +834,56 @@ const MonthlyExams = () => {
       console.error('خطأ في جلب النتائج:', error);
       toast.error('حدث خطأ أثناء جلب النتائج');
     }
+  };
+
+  // دالة خلط المصفوفة
+  const shuffleArray = (array) => {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  };
+
+  // دالة خلط الأسئلة والإجابات
+  const getShuffledQuestions = (questions, exam) => {
+    let shuffledQuestions = [...questions];
+
+    // خلط الأسئلة إذا كان مسموحاً
+    if (exam.shuffle_questions) {
+      shuffledQuestions = shuffleArray(shuffledQuestions);
+    }
+
+    // خلط الإجابات لكل سؤال إذا كان مسموحاً
+    if (exam.shuffle_answers) {
+      shuffledQuestions = shuffledQuestions.map(q => {
+        if (q.question_type === QUESTION_TYPES.MULTIPLE_CHOICE) {
+          const options = q.options || [];
+          const shuffledIndices = shuffleArray([...Array(options.length).keys()]);
+
+          // إنشاء نسخة من السؤال مع الخيارات المخلوطة
+          const shuffledOptions = shuffledIndices.map(i => options[i]);
+
+          // تحديث الإجابة الصحيحة لتتوافق مع الترتيب الجديد
+          const oldCorrectIndex = ENGLISH_OPTIONS.indexOf(q.correct_answer);
+          const newCorrectIndex = shuffledIndices.indexOf(oldCorrectIndex);
+          const newCorrectAnswer = ENGLISH_OPTIONS[newCorrectIndex];
+
+          return {
+            ...q,
+            options: shuffledOptions,
+            correct_answer: newCorrectAnswer,
+            originalOrder: {
+              indices: shuffledIndices,
+              correctAnswer: q.correct_answer
+            }
+          };
+        }
+        return q;
+      });
+    }
+
+    return shuffledQuestions;
   };
 
   const startExam = async (exam) => {
@@ -545,9 +935,12 @@ const MonthlyExams = () => {
         return;
       }
 
+      // ✅ توحيد صيغة الأسئلة للعرض
+      const normalizedQuestions = qs.map(q => normalizeQuestionForDisplay(q));
+
       setTakingExam({
         ...attempt,
-        questions: qs,
+        questions: normalizedQuestions,
         title: exam.title,
         duration_minutes: duration,
         total_marks: exam.total_marks || 100
@@ -560,7 +953,7 @@ const MonthlyExams = () => {
         setTimeLeft(t => {
           if (t <= 1) {
             clearInterval(timerRef.current);
-            autoSubmitExam(attempt, qs);
+            autoSubmitExam(attempt, normalizedQuestions);
             return 0;
           }
           return t - 1;
@@ -569,14 +962,10 @@ const MonthlyExams = () => {
 
       toast.success('تم بدء الامتحان بنجاح!');
 
-      // ✅ التمرير السلس للامتحان وأول سؤال
       setTimeout(() => {
         const panel = document.getElementById('exam-taking-panel');
         if (panel) {
-          // التمرير للبانل أولاً
           panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-          // ثم التمرير لأول سؤال بعد 300ms
           setTimeout(() => {
             const firstQuestion = panel.querySelector('article');
             if (firstQuestion) {
@@ -607,57 +996,87 @@ const MonthlyExams = () => {
 
         if (insertErr) throw insertErr;
       }
-// ضِيفها فوق بلوك التصحيح
-const normalizeCorrectForLegacy = (q, raw) => {
-  const type = String(q?.question_type || '').toLowerCase();
-  let v = raw;
-  if (type === 'true_false') {
-    const up = String(raw ?? '').trim().toUpperCase();
-    if (up === 'A') v = 'TRUE';
-    else if (up === 'B') v = 'FALSE';
-  }
-  return normalizeAnswer(q, v);
-};
+      // ضِيفها فوق بلوك التصحيح
+      const normalizeCorrectForLegacy = (q, raw) => {
+        const type = String(q?.question_type || '').toLowerCase();
+        let v = raw;
+        if (type === 'true_false') {
+          const up = String(raw ?? '').trim().toUpperCase();
+          if (up === 'A') v = 'TRUE';
+          else if (up === 'B') v = 'FALSE';
+        }
+        return normalizeAnswer(q, v);
+      };
 
-// ======= داخل كود حساب الدرجات =======
-questions.forEach(q => {
-  const questionType = (q.question_type || 'multiple_choice').toLowerCase();
-  const studentAnswerRaw = takingAnswers[q.id];
-  const correctAnswerRaw = q.correct_answer;
+      // ======= داخل كود حساب الدرجات =======
+      questions.forEach(async (q) => {
+        const questionType = (q.question_type || 'multiple_choice').toLowerCase();
+        const studentAnswerRaw = takingAnswers[q.id];
+        const correctAnswerRaw = q.correct_answer;
 
-  // تطبيع الإجابات
-  const studentAns = normalizeAnswer(q, studentAnswerRaw);
-  const correctAns = normalizeCorrectForLegacy(q, correctAnswerRaw);
+        // تطبيع الإجابات
+        const studentAns = normalizeAnswer(q, studentAnswerRaw);
+        const correctAns = normalizeCorrectForLegacy(q, correctAnswerRaw);
 
-  const isCorrect = studentAns !== null && correctAns !== null && studentAns === correctAns;
-  const questionMarks = Number(q.marks || 1); // ✅ احترام درجات السؤال
+        // تحليل الإجابة إذا كانت خاطئة
+        if (studentAns !== correctAns) {
+          const analysis = await analyzeError(
+            q.id,
+            studentAns,
+            correctAns,
+            questionType,
+            q.topic
+          );
 
-  gradingDetails.push({
-    order: q.question_order,
-    type: questionType,
-    studentAnswer: studentAnswerRaw || 'لم يجب',
-    correctAnswer: correctAnswerRaw,
-    normalizedStudent: studentAns,
-    normalizedCorrect: correctAns,
-    isCorrect,
-    marks: isCorrect ? questionMarks : 0,
-    totalMarks: questionMarks
-  });
+          if (analysis) {
+            errorAnalytics.push({
+              questionId: q.id,
+              analysis,
+              questionType,
+              studentAnswer: studentAns,
+              correctAnswer: correctAns,
+              marksLost: Number(q.max_marks || 1)
+            });
+          }
+        }
 
-  if (isCorrect) {
-    score += questionMarks; // ✅ إضافة درجات السؤال كاملة
-  }
-});
+        const isCorrect = studentAns !== null && correctAns !== null && studentAns === correctAns;
+        const questionMarks = Number(q.max_marks || 1); // ✅ احترام درجات السؤال
 
+        gradingDetails.push({
+          order: q.question_order,
+          type: questionType,
+          studentAnswer: studentAnswerRaw || 'لم يجب',
+          correctAnswer: correctAnswerRaw,
+          normalizedStudent: studentAns,
+          normalizedCorrect: correctAns,
+          isCorrect,
+          marks: isCorrect ? questionMarks : 0,
+          totalMarks: questionMarks
+        });
+
+        if (isCorrect) {
+          score += questionMarks; // ✅ إضافة درجات السؤال كاملة
+        }
+      });
+
+      // حساب الوقت المستغرق والنسبة المئوية
+      const timeTaken = Math.round((new Date() - new Date(attempt.started_at)) / (1000 * 60));
       const percentage = (score / attempt.total_marks) * 100;
 
+      // تحديث محاولة الامتحان
       const { error: updateErr } = await supabase
         .from('exam_attempts')
         .update({
-          status: 'submitted',
+          status: questions.some(q => q.question_type === QUESTION_TYPES.ESSAY)
+            ? ATTEMPT_STATUS.SUBMITTED
+            : ATTEMPT_STATUS.GRADED,
           submitted_at: new Date().toISOString(),
-          score: score,
-          percentage: percentage
+          total_score: score,
+          total_marks: attempt.total_marks,
+          time_taken_minutes: timeTaken,
+          is_passed: percentage >= (attempt.passing_score || 50),
+          answers: takingAnswers // حفظ جميع الإجابات
         })
         .eq('id', attempt.id);
 
@@ -673,64 +1092,85 @@ questions.forEach(q => {
     }
   };
 
-// توحيد الإجابات قبل الحفظ
-// ✅ دالة موحّدة لتطبيع الإجابات قبل الحفظ
-const normalizeAnswer = (q: any, raw: any): string | null => {
-  if (raw === undefined || raw === null || raw === '') return null;
-  
-  const val = raw.toString().trim();
-  const qtype = (q.question_type || 'multiple_choice').toLowerCase();
+  // توحيد الإجابات قبل الحفظ
+  // ✅ دالة موحّدة لتطبيع الإجابات قبل الحفظ
+  const normalizeAnswer = (question, raw) => {
+    if (raw === undefined || raw === null || raw === '') return null;
 
-  // ✅ أسئلة True/False - نحفظ TRUE/FALSE مباشرة
-  if (qtype === 'true_false') {
+    const val = raw.toString().trim();
+    const qtype = question.question_type;
+
+    switch (qtype) {
+      case QUESTION_TYPES.TRUE_FALSE:
+        const up = val.toUpperCase();
+
+        // قائمة القيم المقبولة للصح
+        if (['TRUE', 'T', '1', 'صح', 'صحيح', 'نعم', 'YES', 'Y', '✅'].includes(up) ||
+          ['TRUE', 'T', '1', 'صح', 'صحيح', 'نعم', 'YES', 'Y', '✅'].includes(val)) {
+          return 'TRUE';
+        }
+
+        // قائمة القيم المقبولة للخطأ
+        if (['FALSE', 'F', '0', 'خطأ', 'خطا', 'لا', 'NO', 'N', '❌'].includes(up) ||
+          ['FALSE', 'F', '0', 'خطأ', 'خطا', 'لا', 'NO', 'N', '❌'].includes(val)) {
+          return 'FALSE';
+        }
+
+        return up;
+
+      case QUESTION_TYPES.MULTIPLE_CHOICE:
+        const answer = val.toUpperCase();
+        if (ENGLISH_OPTIONS.includes(answer)) return answer;
+        if (OPTION_TO_ENGLISH[val]) return OPTION_TO_ENGLISH[val];
+
+        // البحث في النص الكامل للخيارات
+        const options = question.options || [];
+        const index = options.findIndex(opt => opt === val);
+        if (index !== -1) return ENGLISH_OPTIONS[index];
+
+        return answer;
+
+      case QUESTION_TYPES.CORRECT_UNDERLINED:
+        return val; // نقارن النص مباشرة
+
+      case QUESTION_TYPES.ESSAY:
+        return val; // سيتم تصحيحه يدوياً
+
+      default:
+        return val;
+    }
+
+    // ✅ أسئلة Multiple Choice
     const up = val.toUpperCase();
-    
-    // قائمة القيم المقبولة للصح
-    if (['TRUE', 'T', '1', 'صح', 'صحيح', 'نعم', 'YES', 'Y', '✅'].includes(up) || 
-        ['TRUE', 'T', '1', 'صح', 'صحيح', 'نعم', 'YES', 'Y', '✅'].includes(val)) {
-      return 'TRUE';
-    }
-    
-    // قائمة القيم المقبولة للخطأ
-    if (['FALSE', 'F', '0', 'خطأ', 'خطا', 'لا', 'NO', 'N', '❌'].includes(up) || 
-        ['FALSE', 'F', '0', 'خطأ', 'خطا', 'لا', 'NO', 'N', '❌'].includes(val)) {
-      return 'FALSE';
-    }
-    
-    return up; // fallback
-  }
 
-  // ✅ أسئلة Multiple Choice
-  const up = val.toUpperCase();
+    // خريطة الأحرف العربية
+    const arLetterToKey = {
+      'أ': 'A', 'ا': 'A',
+      'ب': 'B',
+      'ج': 'C',
+      'د': 'D',
+    };
 
-  // خريطة الأحرف العربية
-  const arLetterToKey: Record<string, string> = {
-    'أ': 'A', 'ا': 'A',
-    'ب': 'B',
-    'ج': 'C',
-    'د': 'D',
+    // 1) لو بالفعل A/B/C/D
+    if (['A', 'B', 'C', 'D'].includes(up)) return up;
+
+    // 2) لو حرف عربي
+    if (arLetterToKey[val]) return arLetterToKey[val];
+
+    // 3) لو نص الخيار نفسه → حوّله لمفتاحه
+    const a = (q.option_a ?? '').toString().trim();
+    const b = (q.option_b ?? '').toString().trim();
+    const c = (q.option_c ?? '').toString().trim();
+    const d = (q.option_d ?? '').toString().trim();
+
+    if (val === a) return 'A';
+    if (val === b) return 'B';
+    if (val === c) return 'C';
+    if (val === d) return 'D';
+
+    // 4) fallback
+    return up;
   };
-
-  // 1) لو بالفعل A/B/C/D
-  if (['A', 'B', 'C', 'D'].includes(up)) return up;
-
-  // 2) لو حرف عربي
-  if (arLetterToKey[val]) return arLetterToKey[val];
-
-  // 3) لو نص الخيار نفسه → حوّله لمفتاحه
-  const a = (q.option_a ?? '').toString().trim();
-  const b = (q.option_b ?? '').toString().trim();
-  const c = (q.option_c ?? '').toString().trim();
-  const d = (q.option_d ?? '').toString().trim();
-  
-  if (val === a) return 'A';
-  if (val === b) return 'B';
-  if (val === c) return 'C';
-  if (val === d) return 'D';
-
-  // 4) fallback
-  return up;
-};
 
 
 
@@ -769,35 +1209,35 @@ const normalizeAnswer = (q: any, raw: any): string | null => {
 
       // 3) تحضير إدخالات/تحديثات الإجابات
       // 3) تحضير إدخالات/تحديثات الإجابات
-const newAnswers: any[] = [];
-const answersToUpdate: any[] = [];
-let answeredCount = 0;
+      const newAnswers = [];
+      const answersToUpdate = [];
+      let answeredCount = 0;
 
-questions.forEach(q => {
-  const studentAnswerRaw = takingAnswers[q.id];
-  if (studentAnswerRaw === undefined || studentAnswerRaw === null || studentAnswerRaw === '') return;
+      questions.forEach(q => {
+        const studentAnswerRaw = takingAnswers[q.id];
+        if (studentAnswerRaw === undefined || studentAnswerRaw === null || studentAnswerRaw === '') return;
 
-  // ✅ تطبيع الإجابة
-  const answerToStore = normalizeAnswer(q, studentAnswerRaw);
-  if (!answerToStore) return;
+        // ✅ تطبيع الإجابة
+        const answerToStore = normalizeAnswer(q, studentAnswerRaw);
+        if (!answerToStore) return;
 
-  answeredCount++;
+        answeredCount++;
 
-  const existingAnswer = existingAnswersMap.get(q.id);
-  if (!existingAnswer) {
-    newAnswers.push({
-      attempt_id: takingExam.id,
-      question_id: q.id,
-      selected_answer: answerToStore,
-    });
-  } else if (existingAnswer !== answerToStore) {
-    answersToUpdate.push({
-      question_id: q.id,
-      attempt_id: takingExam.id,
-      selected_answer: answerToStore,
-    });
-  }
-});
+        const existingAnswer = existingAnswersMap.get(q.id);
+        if (!existingAnswer) {
+          newAnswers.push({
+            attempt_id: takingExam.id,
+            question_id: q.id,
+            selected_answer: answerToStore,
+          });
+        } else if (existingAnswer !== answerToStore) {
+          answersToUpdate.push({
+            question_id: q.id,
+            attempt_id: takingExam.id,
+            selected_answer: answerToStore,
+          });
+        }
+      });
 
       console.log('✍ عدد الأسئلة المجابة:', answeredCount);
       console.log('➕ إجابات جديدة:', newAnswers.length);
@@ -834,68 +1274,67 @@ questions.forEach(q => {
       }
 
       // 4) حساب الدرجة والنسبة يدويًا (قبل التسليم)
-  // 4) حساب الدرجة والنسبة يدويًا
-let score = 0;
-let totalMarks = Number(takingExam.total_marks) || 0;
+      // 4) حساب الدرجة والنسبة وتحليل الأخطاء
+      let score = 0;
+      let totalMarks = Number(takingExam.total_marks) || 0;
+      const errorAnalytics = [];
 
-if (!totalMarks) {
-  totalMarks = questions.reduce((sum, q) => sum + Number(q.marks || 1), 0);
-}
+      if (!totalMarks) {
+        totalMarks = questions.reduce((sum, q) => sum + Number(q.max_marks || 1), 0);
+      }
 
-console.log('📊 بدء حساب الدرجات:');
-console.log('  إجمالي الدرجات:', totalMarks);
+      console.log('📊 بدء حساب الدرجات وتحليل الأخطاء:');
+      console.log('  إجمالي الدرجات:', totalMarks); const gradingDetails = [];
 
-const gradingDetails = [];
+      questions.forEach(q => {
+        const studentAns = (takingAnswers[q.id] || '').toString().toUpperCase().trim();
+        const correctAns = (q.correct_answer || '').toString().toUpperCase().trim();
 
-questions.forEach(q => {
-  const studentAns = (takingAnswers[q.id] || '').toString().toUpperCase().trim();
-  const correctAns = (q.correct_answer || '').toString().toUpperCase().trim();
+        // ✅ المقارنة المباشرة بعد التطبيع
+        const isCorrect = studentAns && studentAns === correctAns;
+        const questionMarks = Number(q.max_marks || 1);
 
-  // ✅ المقارنة المباشرة بعد التطبيع
-  const isCorrect = studentAns && studentAns === correctAns;
-  const questionMarks = Number(q.marks || 1);
+        gradingDetails.push({
+          order: q.question_order,
+          type: q.question_type,
+          studentAnswer: takingAnswers[q.id] || 'لم يجب',
+          correctAnswer: q.correct_answer,
+          isCorrect,
+          marks: isCorrect ? questionMarks : 0,
+          totalMarks: questionMarks
+        });
 
-  gradingDetails.push({
-    order: q.question_order,
-    type: q.question_type,
-    studentAnswer: takingAnswers[q.id] || 'لم يجب',
-    correctAnswer: q.correct_answer,
-    isCorrect,
-    marks: isCorrect ? questionMarks : 0,
-    totalMarks: questionMarks
-  });
+        if (isCorrect) {
+          score += questionMarks;
+        }
+      });
 
-  if (isCorrect) {
-    score += questionMarks;
-  }
-});
+      console.table(gradingDetails);
 
-console.table(gradingDetails);
+      const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
 
-const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
+      console.log('📊 النتيجة النهائية:');
+      console.log('  ✅ الدرجة:', score, '/', totalMarks);
+      console.log('  📈 النسبة:', percentage.toFixed(2), '%');
 
-console.log('📊 النتيجة النهائية:');
-console.log('  ✅ الدرجة:', score, '/', totalMarks);
-console.log('  📈 النسبة:', percentage.toFixed(2), '%');
+      // 5) تحديث attempt - الآن نحفظ النتيجة!
+      console.log('💾 حفظ النتيجة في قاعدة البيانات...');
 
-// 5) تحديث attempt - الآن نحفظ النتيجة!
-console.log('💾 حفظ النتيجة في قاعدة البيانات...');
+      const { error: updateAttemptErr } = await supabase
+        .from('exam_attempts')
+        .update({
+          status: 'submitted',
+          submitted_at: new Date().toISOString(),
+          score: score,              // ✅ نحفظ الدرجة
+          percentage: percentage,    // ✅ نحفظ النسبة
+          total_marks: totalMarks,   // ✅ نحفظ الإجمالي
+          is_graded: true,           // ✅ تم التصحيح
+        })
+        .eq('id', takingExam.id);
 
-const { error: updateAttemptErr } = await supabase
-  .from('exam_attempts')
-  .update({
-    status: 'submitted',
-    submitted_at: new Date().toISOString(),
-    score: score,              // ✅ نحفظ الدرجة
-    percentage: percentage,    // ✅ نحفظ النسبة
-    total_marks: totalMarks,   // ✅ نحفظ الإجمالي
-    is_graded: true,           // ✅ تم التصحيح
-  })
-  .eq('id', takingExam.id);
+      if (updateAttemptErr) throw updateAttemptErr;
 
-if (updateAttemptErr) throw updateAttemptErr;
-
-console.log('✅ تم حفظ النتيجة بنجاح!');
+      console.log('✅ تم حفظ النتيجة بنجاح!');
 
       console.log('✅ تم حفظ النتيجة بنجاح!');
 
@@ -913,16 +1352,36 @@ console.log('✅ تم حفظ النتيجة بنجاح!');
       setTakingExam(null);
       setTakingAnswers({});
 
+      // تسجيل تحليل الأخطاء
+      if (errorAnalytics.length > 0) {
+        console.log('📝 تسجيل تحليل الأخطاء...');
+        for (const error of errorAnalytics) {
+          await logError(takingExam.id, error.questionId, error.analysis);
+        }
+        console.log(`✅ تم تسجيل ${errorAnalytics.length} خطأ للتحليل`);
+      }
+
+      // إنشاء ملخص الأداء
+      await supabase.from('student_performance_summary').upsert({
+        student_id: currentUser.id,
+        exam_id: takingExam.exam_id,
+        total_questions: questions.length,
+        correct_answers: questions.length - errorAnalytics.length,
+        wrong_answers: errorAnalytics.length,
+        unanswered: questions.length - Object.keys(takingAnswers).length,
+        weak_topics: getWeakTopics(errorAnalytics),
+        strong_topics: getStrongTopics(questions, errorAnalytics),
+        improvement_areas: generateImprovementAreas(errorAnalytics)
+      });
+
       // 8) رسالة نجاح محسّنة
       const passMarks = Number(takingExam.pass_marks) || (totalMarks * 0.5);
       const isPassed = score >= passMarks;
 
       toast.success(
         `✅ تم تسليم الامتحان بنجاح!
-
-)}
-
-يمكنك الاطلاع على التفاصيل في صفحة النتائج`
+${errorAnalytics.length > 0 ? `\nعدد الأخطاء: ${errorAnalytics.length}` : '\nأداء ممتاز - لا توجد أخطاء! 🎉'}
+\nيمكنك الاطلاع على التحليل التفصيلي في صفحة النتائج`
       );
 
 
@@ -940,16 +1399,81 @@ console.log('✅ تم حفظ النتيجة بنجاح!');
   };
 
   // ✅ دالة اختيارية لإعادة حساب النتيجة من الخادم
-  const recalculateScore = async (attemptId: string) => {
+  // تحليل وتصنيف الأخطاء
+  const analyzeError = async (questionId, studentAnswer, correctAnswer, questionType, topic) => {
+    try {
+      // تحديد نوع الخطأ
+      let errorType = ERROR_TYPES.CONCEPT_MISUNDERSTANDING; // القيمة الافتراضية
+
+      if (questionType === QUESTION_TYPES.MULTIPLE_CHOICE) {
+        // تحليل الخطأ في الاختيار المتعدد
+        const { data: previousAnswers } = await supabase
+          .from('student_answers')
+          .select('student_answer')
+          .eq('question_id', questionId)
+          .eq('is_correct', false);
+
+        // إذا كان نفس الخطأ متكرر
+        const isRepeatedError = previousAnswers?.some(a => a.student_answer === studentAnswer);
+
+        if (isRepeatedError) {
+          errorType = ERROR_TYPES.CONCEPT_MISUNDERSTANDING;
+        } else {
+          errorType = ERROR_TYPES.CARELESS_MISTAKE;
+        }
+      } else if (questionType === QUESTION_TYPES.TRUE_FALSE) {
+        // خطأ في الصح والخطأ غالباً يكون عدم فهم المفهوم
+        errorType = ERROR_TYPES.CONCEPT_MISUNDERSTANDING;
+      }
+
+      return {
+        error_type: errorType,
+        is_repeated_error: false, // سيتم تحديثه لاحقاً
+        topic: topic || 'general'
+      };
+    } catch (error) {
+      console.error('خطأ في تحليل الخطأ:', error);
+      return null;
+    }
+  };
+
+  // دالة تسجيل الخطأ في قاعدة البيانات
+  const logError = async (attemptId, questionId, analysis) => {
+    try {
+      const { data: attempt } = await supabase
+        .from('exam_attempts')
+        .select('exam_id, student_id')
+        .eq('id', attemptId)
+        .single();
+
+      if (!attempt) throw new Error('لم يتم العثور على المحاولة');
+
+      const { error } = await supabase
+        .from('student_error_analytics')
+        .insert([{
+          student_id: attempt.student_id,
+          exam_id: attempt.exam_id,
+          question_id: questionId,
+          attempt_id: attemptId,
+          ...analysis
+        }]);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('خطأ في تسجيل تحليل الخطأ:', error);
+    }
+  };
+
+  const recalculateScore = async (attemptId) => {
     try {
       console.log('🔄 إعادة حساب النتيجة من الخادم...');
 
-    // 5.1) استدعاء التصحيح السيرفري
-const { data: recalcData, error: recalcErr } = await supabase
-  .rpc('calculate_exam_score', { attempt_id_param: takingExam.id });
+      // 5.1) استدعاء التصحيح السيرفري
+      const { data: recalcData, error: recalcErr } = await supabase
+        .rpc('calculate_exam_score', { attempt_id_param: takingExam.id });
 
-if (recalcErr) throw recalcErr;
-console.log('✅ إعادة الحساب من السيرفر:', recalcData);
+      if (recalcErr) throw recalcErr;
+      console.log('✅ إعادة الحساب من السيرفر:', recalcData);
 
 
       toast.success('تم إعادة حساب النتيجة بنجاح!');
@@ -962,15 +1486,71 @@ console.log('✅ إعادة الحساب من السيرفر:', recalcData);
   };
 
   // ✅ دالة للتحقق من حالة التصحيح
-  const checkGradingStatus = async (attemptId: string) => {
-  const { data: verifyResult, error: verifyErr } = await supabase
-  .from('exam_attempts')
-  .select('score, percentage, is_graded')
-  .eq('id', takingExam.id)
-  .single();
+  // دالة تحديد المواضيع الضعيفة
+  const getWeakTopics = (errors) => {
+    const topicErrors = {};
+    errors.forEach(error => {
+      const topic = error.analysis.topic || 'general';
+      topicErrors[topic] = (topicErrors[topic] || 0) + 1;
+    });
 
-if (verifyErr) throw verifyErr;
-console.log('🔍 النتيجة من قاعدة البيانات:', verifyResult);
+    // اعتبار الموضوع ضعيفاً إذا كان عدد الأخطاء أكثر من 2
+    return Object.entries(topicErrors)
+      .filter(([_, count]) => count > 2)
+      .map(([topic]) => topic);
+  };
+
+  // دالة تحديد نقاط القوة
+  const getStrongTopics = (questions, errors) => {
+    const topics = {};
+    const errorTopics = new Set(errors.map(e => e.analysis.topic));
+
+    questions.forEach(q => {
+      const topic = q.topic || 'general';
+      if (!errorTopics.has(topic)) {
+        topics[topic] = (topics[topic] || 0) + 1;
+      }
+    });
+
+    // اعتبار الموضوع قوياً إذا كان عدد الإجابات الصحيحة أكثر من 3
+    return Object.entries(topics)
+      .filter(([_, count]) => count > 3)
+      .map(([topic]) => topic);
+  };
+
+  // دالة توليد توصيات التحسين
+  const generateImprovementAreas = (errors) => {
+    const recommendations = new Set();
+
+    errors.forEach(error => {
+      switch (error.analysis.error_type) {
+        case ERROR_TYPES.CONCEPT_MISUNDERSTANDING:
+          recommendations.add(`مراجعة مفاهيم ${error.analysis.topic || 'الموضوع'}`);
+          break;
+        case ERROR_TYPES.CALCULATION_ERROR:
+          recommendations.add('تحسين مهارات الحساب والتركيز');
+          break;
+        case ERROR_TYPES.KNOWLEDGE_GAP:
+          recommendations.add(`دراسة ${error.analysis.topic || 'الموضوع'} بشكل أعمق`);
+          break;
+        case ERROR_TYPES.LANGUAGE_BARRIER:
+          recommendations.add('تحسين فهم المصطلحات والتعبيرات');
+          break;
+      }
+    });
+
+    return Array.from(recommendations);
+  };
+
+  const checkGradingStatus = async (attemptId) => {
+    const { data: verifyResult, error: verifyErr } = await supabase
+      .from('exam_attempts')
+      .select('score, percentage, is_graded')
+      .eq('id', takingExam.id)
+      .single();
+
+    if (verifyErr) throw verifyErr;
+    console.log('🔍 النتيجة من قاعدة البيانات:', verifyResult);
     if (error) {
       console.error('خطأ في جلب حالة التصحيح:', error);
       return null;
@@ -995,13 +1575,17 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
   const addQuestion = () => {
     setQuestions(prev => [...prev, {
       question_text: '',
-      question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
-      option_a: '',
-      option_b: '',
-      option_c: '',
-      option_d: '',
+      question_type: QUESTION_TYPES.MULTIPLE_CHOICE,
+      options: ['', '', '', ''],
       correct_answer: 'A',
-      marks: 1
+      max_marks: 1,
+      explanation: '',
+      image_url: '',
+      grading_rubric: '',
+      model_answer: '',
+      question_order: prev.length + 1,
+      topic: '',
+      difficulty_level: 'medium'
     }]);
     setNumQuestions(prev => prev + 1);
   };
@@ -1020,9 +1604,93 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
   const updateQuestion = (index, field, value) => {
     setQuestions(prev => {
       const copy = [...prev];
-      copy[index] = { ...copy[index], [field]: value };
+      const question = { ...copy[index] };
+
+      // Handle special field updates
+      if (field === 'question_type') {
+        // Reset options based on question type
+        if (value === QUESTION_TYPES.TRUE_FALSE) {
+          question.options = ['صح', 'خطأ'];
+          question.correct_answer = 'TRUE';
+        } else if (value === QUESTION_TYPES.MULTIPLE_CHOICE) {
+          question.options = ['', '', '', ''];
+          question.correct_answer = 'A';
+        } else {
+          question.options = [];
+          question.correct_answer = '';
+        }
+      }
+
+      // Update all fields, including nested ones
+      const fieldParts = field.split('.');
+      if (fieldParts.length > 1) {
+        let current = question;
+        for (let i = 0; i < fieldParts.length - 1; i++) {
+          if (!current[fieldParts[i]]) {
+            current[fieldParts[i]] = {};
+          }
+          current = current[fieldParts[i]];
+        }
+        current[fieldParts[fieldParts.length - 1]] = value;
+      } else {
+        question[field] = value;
+      }
+
+      copy[index] = question;
       return copy;
     });
+  };
+
+  // رفع صورة لكل سؤال في نموذج الإنشاء
+  const handleQuestionImageUpload = async (questionIndex, file) => {
+    try {
+      if (!file) return;
+
+      // تحقق من النوع والحجم
+      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowed.includes(file.type)) {
+        toast.error('نوع الملف غير مدعوم. استخدم صورة (JPG, PNG, WebP, GIF)');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('حجم الصورة كبير جداً - الحد الأقصى 5 ميجابايت');
+        return;
+      }
+
+      toast.info('جاري رفع الصورة...', { toastId: `upload-q-${questionIndex}`, autoClose: false });
+
+      const ext = file.name.split('.').pop();
+      const name = `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const path = `exam-images/${name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('exam-assets')
+        .upload(path, file, { contentType: file.type, cacheControl: '3600' });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('exam-assets')
+        .getPublicUrl(path);
+
+      const publicUrl = data?.publicUrl || null;
+
+      updateQuestion(questionIndex, 'image_url', publicUrl);
+      updateQuestion(questionIndex, 'image_metadata', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        storagePath: path,
+        uploadedAt: new Date().toISOString()
+      });
+
+      toast.dismiss(`upload-q-${questionIndex}`);
+      toast.success('تم رفع صورة السؤال');
+    } catch (err) {
+      console.error('خطأ رفع صورة السؤال:', err);
+      toast.dismiss(`upload-q-${questionIndex}`);
+      toast.error('فشل رفع الصورة');
+    }
   };
 
   const resetForm = () => {
@@ -1031,23 +1699,55 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
       description: '',
       month: '',
       subject: '',
-      level_scope: 'shared', // ✅ إضافة
+      course_id: null,
+      lesson_id: null,
+      level_scope: 'shared',
       duration_minutes: DEFAULT_DURATION_MIN,
       total_marks: 100,
-      pass_marks: 50,
+      passing_score: 50,
       start_date: '',
       end_date: '',
-      is_active: true
+      is_active: true,
+      allow_review: true,
+      shuffle_questions: false,
+      shuffle_answers: false,
+      attempts_allowed: 1,
+      grading_scheme: {
+        auto_grade: true,
+        manual_review_needed: false,
+        partial_credit: false
+      },
+      settings: {
+        show_explanation: true,
+        time_per_question: null,
+        prevent_backward_navigation: false,
+        randomize_options: true
+      }
     });
     setQuestions([{
       question_text: '',
-      question_type: 'multiple_choice', // ✅ إضافة القيمة الافتراضية
-      option_a: '',
-      option_b: '',
-      option_c: '',
-      option_d: '',
+      question_type: QUESTION_TYPES.MULTIPLE_CHOICE,
+      options: ['', '', '', ''],
       correct_answer: 'A',
-      marks: 1
+      max_marks: 1,
+      explanation: '',
+      image_url: '',
+      grading_rubric: '',
+      model_answer: '',
+      topic: '',
+      difficulty_level: 'medium',
+      time_limit: null,
+      tags: [],
+      feedback: {
+        correct: '',
+        incorrect: ''
+      },
+      metadata: {
+        source: '',
+        category: '',
+        skill_level: 'beginner'
+      },
+      question_order: 1
     }]);
     setNumQuestions(1);
   };
@@ -1108,29 +1808,59 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
         .order('question_order', { ascending: true });
 
       if (error) throw error;
+
       if (data && data.length) {
-        setQuestions(data.map(d => ({
-          question_text: d.question_text,
-          question_type: d.question_type || 'multiple_choice', // ✅ إضافة نوع السؤال
-          option_a: d.option_a,
-          option_b: d.option_b,
-          option_c: d.option_c,
-          option_d: d.option_d,
-          correct_answer: d.correct_answer || 'A',
-          marks: Number(d.marks || 1)
-        })));
+        const normalizedQuestions = data.map(d => {
+          const baseQ = {
+            question_text: d.question_text || '',
+            question_type: d.question_type || QUESTION_TYPES.MULTIPLE_CHOICE,
+            correct_answer: d.correct_answer || 'A',
+            max_marks: Number(d.max_marks || 1),
+            explanation: d.explanation || '',
+            image_url: d.image_url || '',
+            topic: d.topic || '',
+            difficulty_level: d.difficulty_level || 'medium'
+          };
+
+          if (d.question_type === QUESTION_TYPES.TRUE_FALSE) {
+            return {
+              ...baseQ,
+              options: ['TRUE', 'FALSE']
+            };
+          } else if (d.question_type === QUESTION_TYPES.MULTIPLE_CHOICE) {
+            return {
+              ...baseQ,
+              option_a: d.option_a || '',
+              option_b: d.option_b || '',
+              option_c: d.option_c || '',
+              option_d: d.option_d || '',
+              options: [
+                d.option_a || '',
+                d.option_b || '',
+                d.option_c || '',
+                d.option_d || ''
+              ]
+            };
+          } else if (d.question_type === QUESTION_TYPES.ESSAY) {
+            return {
+              ...baseQ,
+              model_answer: d.model_answer || '',
+              grading_rubric: d.grading_rubric || ''
+            };
+          } else if (d.question_type === QUESTION_TYPES.CORRECT_UNDERLINED) {
+            return {
+              ...baseQ,
+              option_a: d.option_a || ''
+            };
+          }
+
+          return baseQ;
+        });
+
+        setQuestions(normalizedQuestions);
         setNumQuestions(data.length);
       } else {
-        setQuestions([{
-          question_text: '',
-          option_a: '',
-          option_b: '',
-          option_c: '',
-          option_d: '',
-          correct_answer: 'A',
-          marks: 1
-        }]);
-        setNumQuestions(1);
+        resetForm();
       }
     } catch (err) {
       console.error('خطأ في تحميل أسئلة الامتحان:', err);
@@ -1145,6 +1875,72 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
+  };
+
+  // حفظ التصحيح اليدوي
+  const saveEssayGrading = async () => {
+    try {
+      setIsGradingSaving(true);
+      const updatedAnswers = Object.entries(gradingData).map(([answerId, marks]) => ({
+        id: answerId,
+        marks_obtained: Number(marks),
+        teacher_feedback: gradingFeedback[answerId] || '',
+        graded_by: currentUser.id,
+        graded_at: new Date().toISOString(),
+        is_graded: true
+      }));
+
+      const { error } = await supabase
+        .from('student_answers')
+        .upsert(updatedAnswers);
+
+      if (error) throw error;
+
+      // تحديث الدرجة الكلية للمحاولة
+      await updateAttemptTotalScore(currentGradingAttempt.id);
+
+      toast.success('تم حفظ التصحيح بنجاح');
+      setShowGradingModal(false);
+      setCurrentGradingAttempt(null);
+      setGradingData({});
+      setGradingFeedback({});
+      fetchExams(); // تحديث القائمة
+
+    } catch (error) {
+      console.error('خطأ في حفظ التصحيح:', error);
+      toast.error('فشل في حفظ التصحيح');
+    } finally {
+      setIsGradingSaving(false);
+    }
+  };
+
+  // تحديث المجموع الكلي للمحاولة
+  const updateAttemptTotalScore = async (attemptId) => {
+    try {
+      const { data: answers, error: answersError } = await supabase
+        .from('student_answers')
+        .select('marks_obtained')
+        .eq('attempt_id', attemptId);
+
+      if (answersError) throw answersError;
+
+      const totalScore = answers.reduce((sum, ans) => sum + (Number(ans.marks_obtained) || 0), 0);
+
+      const { error: updateError } = await supabase
+        .from('exam_attempts')
+        .update({
+          total_score: totalScore,
+          status: 'graded',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', attemptId);
+
+      if (updateError) throw updateError;
+
+    } catch (error) {
+      console.error('خطأ في تحديث الدرجة الكلية:', error);
+      throw error;
+    }
   };
 
   const formatTime = (s) => {
@@ -1195,67 +1991,67 @@ console.log('🔍 النتيجة من قاعدة البيانات:', verifyResul
   };
 
   // 4) توليد الشهادة
-const generateAllExamsCertificate = async () => {
-  try {
-    setIsCertGenerating(true);
-    const rows = getMyCompletedAttempts();
-    
-    // ========== التحقق من البيانات ==========
-    if (rows.length === 0) { 
-      toast.error('لا توجد امتحانات مكتملة لديك بعد.'); 
-      return; 
-    }
-    if (!rows.some(r => canViewResult(r.att))) { 
-      toast.info('الشهادة ستتاح بعد مرور ساعتين من تسليم أول امتحان.'); 
-      return; 
-    }
+  const generateAllExamsCertificate = async () => {
+    try {
+      setIsCertGenerating(true);
+      const rows = getMyCompletedAttempts();
 
-    // ========== استيراد المكتبات بشكل متوازي ==========
-    console.log('📦 جاري تحميل المكتبات...');
-    const [{ default: html2canvas }, jspdfMod, { default: QRCode }] = await Promise.all([
-      import('html2canvas'),
-      import('jspdf'),
-      import('qrcode')
-    ]);
-    const { jsPDF } = jspdfMod;
-    console.log('✅ تم تحميل المكتبات بنجاح');
+      // ========== التحقق من البيانات ==========
+      if (rows.length === 0) {
+        toast.error('لا توجد امتحانات مكتملة لديك بعد.');
+        return;
+      }
+      if (!rows.some(r => canViewResult(r.att))) {
+        toast.info('الشهادة ستتاح بعد مرور ساعتين من تسليم أول امتحان.');
+        return;
+      }
 
-    // ========== إعداد البيانات ==========
-    const sum = summarizeCompletedAttempts(rows);
-    const serial = `RL-ALL-${new Date().toISOString().slice(0, 10)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-    const verifyUrl = `https://yourdomain.com/cert/verify?serial=${encodeURIComponent(serial)}`;
-    const qrDataUrl = await QRCode.toDataURL(verifyUrl, { 
-      width: 180, 
-      margin: 1,
-      errorCorrectionLevel: 'M'
-    });
+      // ========== استيراد المكتبات بشكل متوازي ==========
+      console.log('📦 جاري تحميل المكتبات...');
+      const [{ default: html2canvas }, jspdfMod, { default: QRCode }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+        import('qrcode')
+      ]);
+      const { jsPDF } = jspdfMod;
+      console.log('✅ تم تحميل المكتبات بنجاح');
 
-    // ========== صفحة 1: الشهادة ==========
-    console.log('📄 جاري إنشاء صفحة الشهادة...');
-    const el = certRef.current;
-    if (!el) throw new Error('لم يتم العثور على عنصر القالب');
-    
-    // تعبئة البيانات الأساسية
-    el.querySelector('[data-field="platform"]').textContent = 'واحة العلم التعليمية';
-    el.querySelector('[data-field="student"]').textContent = userName || 'الطالب';
-    el.querySelector('[data-field="date"]').textContent = new Date().toLocaleDateString('ar-EG');
-    el.querySelector('[data-field="serial"]').textContent = serial;
-    el.querySelector('[data-field="qr"]').src = qrDataUrl;
-    el.querySelector('[data-field="total"]').textContent = `${sum.totalScore} / ${sum.totalMarks} (${sum.percentage}%)`;
+      // ========== إعداد البيانات ==========
+      const sum = summarizeCompletedAttempts(rows);
+      const serial = `RL-ALL-${new Date().toISOString().slice(0, 10)}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      const verifyUrl = `https://yourdomain.com/cert/verify?serial=${encodeURIComponent(serial)}`;
+      const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+        width: 180,
+        margin: 1,
+        errorCorrectionLevel: 'M'
+      });
 
-    // بناء جدول الامتحانات
-    const tbody = el.querySelector('[data-field="rows"]');
-    tbody.innerHTML = rows.map(({ exam, att }, i) => {
-      const passPct = (exam.pass_marks / (exam.total_marks || 1)) * 100;
-      const isPass = (att.percentage || 0) >= passPct;
-      const submitted = att.submitted_at 
-        ? new Date(att.submitted_at).toLocaleString('ar-EG', { 
-            year: 'numeric', month: 'short', day: 'numeric', 
-            hour: '2-digit', minute: '2-digit' 
-          }) 
-        : '-';
-      
-      return `
+      // ========== صفحة 1: الشهادة ==========
+      console.log('📄 جاري إنشاء صفحة الشهادة...');
+      const el = certRef.current;
+      if (!el) throw new Error('لم يتم العثور على عنصر القالب');
+
+      // تعبئة البيانات الأساسية
+      el.querySelector('[data-field="platform"]').textContent = 'واحة العلم التعليمية';
+      el.querySelector('[data-field="student"]').textContent = userName || 'الطالب';
+      el.querySelector('[data-field="date"]').textContent = new Date().toLocaleDateString('ar-EG');
+      el.querySelector('[data-field="serial"]').textContent = serial;
+      el.querySelector('[data-field="qr"]').src = qrDataUrl;
+      el.querySelector('[data-field="total"]').textContent = `${sum.totalScore} / ${sum.totalMarks} (${sum.percentage}%)`;
+
+      // بناء جدول الامتحانات
+      const tbody = el.querySelector('[data-field="rows"]');
+      tbody.innerHTML = rows.map(({ exam, att }, i) => {
+        const passPct = (exam.pass_marks / (exam.total_marks || 1)) * 100;
+        const isPass = (att.percentage || 0) >= passPct;
+        const submitted = att.submitted_at
+          ? new Date(att.submitted_at).toLocaleString('ar-EG', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          })
+          : '-';
+
+        return `
         <tr>
           <td style="padding:6px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
           <td style="padding:6px;border:1px solid #ddd;">${exam.title || '-'}</td>
@@ -1268,45 +2064,45 @@ const generateAllExamsCertificate = async () => {
           <td style="padding:6px;border:1px solid #ddd;font-size:10px;">${submitted}</td>
         </tr>
       `;
-    }).join('');
+      }).join('');
 
-    // ✅ انتظار تحميل الخطوط والصور قبل التصوير
-    await document.fonts.ready;
-    await new Promise(resolve => setTimeout(resolve, 300));
+      // ✅ انتظار تحميل الخطوط والصور قبل التصوير
+      await document.fonts.ready;
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-    // تحويل الشهادة لصورة بجودة عالية
-    console.log('📸 جاري تصوير صفحة الشهادة...');
-    const canvas1 = await html2canvas(el, { 
-      scale: 2,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-      imageTimeout: 0
-    });
-    const img1 = canvas1.toDataURL('image/png', 0.95);
-    console.log('✅ تم تصوير الشهادة بنجاح');
+      // تحويل الشهادة لصورة بجودة عالية
+      console.log('📸 جاري تصوير صفحة الشهادة...');
+      const canvas1 = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 0
+      });
+      const img1 = canvas1.toDataURL('image/png', 0.95);
+      console.log('✅ تم تصوير الشهادة بنجاح');
 
-    // ========== إنشاء PDF ==========
-    const pdf = new jsPDF({ 
-      orientation: 'portrait', 
-      unit: 'pt', 
-      format: 'a4',
-      compress: true
-    });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    
-    // إضافة صفحة الشهادة
-    pdf.addImage(img1, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
+      // ========== إنشاء PDF ==========
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'pt',
+        format: 'a4',
+        compress: true
+      });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
 
-    // ========== جلب الأخطاء ==========
-    const attemptIds = rows.map(r => r.att.id);
-    console.log(`🔍 جاري جلب الأخطاء لـ ${attemptIds.length} محاولة...`);
-    
-    const { data: wrongAnswers, error: wrongErr } = await supabase
-      .from('exam_answers')
-      .select(`
+      // إضافة صفحة الشهادة
+      pdf.addImage(img1, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
+
+      // ========== جلب الأخطاء ==========
+      const attemptIds = rows.map(r => r.att.id);
+      console.log(`🔍 جاري جلب الأخطاء لـ ${attemptIds.length} محاولة...`);
+
+      const { data: wrongAnswers, error: wrongErr } = await supabase
+        .from('exam_answers')
+        .select(`
         id,
         attempt_id,
         question_id,
@@ -1322,54 +2118,54 @@ const generateAllExamsCertificate = async () => {
           question_type
         )
       `)
-      .in('attempt_id', attemptIds)
-      .eq('is_correct', false)
-      .order('attempt_id', { ascending: true });
+        .in('attempt_id', attemptIds)
+        .eq('is_correct', false)
+        .order('attempt_id', { ascending: true });
 
-    if (wrongErr) {
-      console.error('❌ خطأ في جلب الأخطاء:', wrongErr);
-      throw new Error(`فشل جلب الأخطاء: ${wrongErr.message}`);
-    }
+      if (wrongErr) {
+        console.error('❌ خطأ في جلب الأخطاء:', wrongErr);
+        throw new Error(`فشل جلب الأخطاء: ${wrongErr.message}`);
+      }
 
-    // التحقق من وجود أخطاء
-    const hasErrors = wrongAnswers?.length > 0;
-    console.log(`📊 عدد الأخطاء المستردة: ${wrongAnswers?.length || 0}`);
+      // التحقق من وجود أخطاء
+      const hasErrors = wrongAnswers?.length > 0;
+      console.log(`📊 عدد الأخطاء المستردة: ${wrongAnswers?.length || 0}`);
 
-    // ========== صفحة 2: تحليل الأخطاء ==========
-    if (hasErrors) {
-      console.log('📝 جاري إنشاء صفحة تحليل الأخطاء...');
-      
-      // تجميع الأخطاء حسب الامتحان
-      const errorsByExam = new Map();
-      
-      wrongAnswers.forEach(ans => {
-        const attempt = rows.find(r => r.att.id === ans.attempt_id);
-        if (!attempt) {
-          console.warn(`⚠️ محاولة غير موجودة: ${ans.attempt_id}`);
-          return;
-        }
-        
-        const examKey = attempt.exam.id;
-        if (!errorsByExam.has(examKey)) {
-          errorsByExam.set(examKey, {
-            examTitle: attempt.exam.title,
-            examSubject: attempt.exam.subject,
-            submittedAt: attempt.att.submitted_at,
-            errors: []
+      // ========== صفحة 2: تحليل الأخطاء ==========
+      if (hasErrors) {
+        console.log('📝 جاري إنشاء صفحة تحليل الأخطاء...');
+
+        // تجميع الأخطاء حسب الامتحان
+        const errorsByExam = new Map();
+
+        wrongAnswers.forEach(ans => {
+          const attempt = rows.find(r => r.att.id === ans.attempt_id);
+          if (!attempt) {
+            console.warn(`⚠️ محاولة غير موجودة: ${ans.attempt_id}`);
+            return;
+          }
+
+          const examKey = attempt.exam.id;
+          if (!errorsByExam.has(examKey)) {
+            errorsByExam.set(examKey, {
+              examTitle: attempt.exam.title,
+              examSubject: attempt.exam.subject,
+              submittedAt: attempt.att.submitted_at,
+              errors: []
+            });
+          }
+
+          errorsByExam.get(examKey).errors.push({
+            ...ans,
+            question: ans.exam_questions
           });
-        }
-        
-        errorsByExam.get(examKey).errors.push({
-          ...ans,
-          question: ans.exam_questions
         });
-      });
 
-      console.log(`📚 تم تجميع ${errorsByExam.size} امتحان بأخطاء`);
+        console.log(`📚 تم تجميع ${errorsByExam.size} امتحان بأخطاء`);
 
-      // بناء صفحة HTML للأخطاء
-      const errorsPage = document.createElement('div');
-      errorsPage.style.cssText = `
+        // بناء صفحة HTML للأخطاء
+        const errorsPage = document.createElement('div');
+        errorsPage.style.cssText = `
         width: 794px;
         min-height: 1123px;
         background: white;
@@ -1383,8 +2179,8 @@ const generateAllExamsCertificate = async () => {
         z-index: -1;
       `;
 
-      // Header مع تصميم محسّن
-      errorsPage.innerHTML = `
+        // Header مع تصميم محسّن
+        errorsPage.innerHTML = `
         <div style="text-align: center; border-bottom: 3px solid #665446; padding-bottom: 20px; margin-bottom: 30px;">
           <h1 style="color: #665446; font-size: 32px; margin: 0 0 10px 0; font-weight: 700;">
             📋 تحليل تفصيلي للأخطاء
@@ -1399,14 +2195,14 @@ const generateAllExamsCertificate = async () => {
         </div>
       `;
 
-      // بناء محتوى الأخطاء
-      let errorsHTML = '';
-      let errorCounter = 0;
+        // بناء محتوى الأخطاء
+        let errorsHTML = '';
+        let errorCounter = 0;
 
-      Array.from(errorsByExam.values()).forEach((examData, examIdx) => {
-        console.log(`✏️ معالجة امتحان ${examIdx + 1}: "${examData.examTitle}" - ${examData.errors.length} خطأ`);
-        
-        errorsHTML += `
+        Array.from(errorsByExam.values()).forEach((examData, examIdx) => {
+          console.log(`✏️ معالجة امتحان ${examIdx + 1}: "${examData.examTitle}" - ${examData.errors.length} خطأ`);
+
+          errorsHTML += `
           <div style="margin-bottom: 30px; page-break-inside: avoid;">
             <div style="background: linear-gradient(135deg, #665446 0%, #8b6f47 100%); 
                         padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; 
@@ -1422,44 +2218,44 @@ const generateAllExamsCertificate = async () => {
             <div style="display: grid; gap: 15px;">
         `;
 
-        examData.errors.forEach((error) => {
-          errorCounter++;
-          const q = error.question;
-          
-          if (!q) {
-            console.warn(`⚠️ سؤال مفقود للخطأ: ${error.id}`);
-            return;
-          }
+          examData.errors.forEach((error) => {
+            errorCounter++;
+            const q = error.question;
 
-          const isTrueFalse = q.question_type === 'true_false';
-          
-          // دالة محسّنة لعرض النص
-          const getAnswerDisplay = (answer) => {
-            if (!answer) return { text: 'لم يتم الإجابة', color: '#999' };
-            
-            if (isTrueFalse) {
-              return answer === 'TRUE' 
-                ? { text: '✓ صح', color: '#2e7d32' }
-                : { text: '✗ خطأ', color: '#c62828' };
+            if (!q) {
+              console.warn(`⚠️ سؤال مفقود للخطأ: ${error.id}`);
+              return;
             }
-            
-            const options = {
-              'A': { text: q.option_a, label: 'أ' },
-              'B': { text: q.option_b, label: 'ب' },
-              'C': { text: q.option_c, label: 'ج' },
-              'D': { text: q.option_d, label: 'د' }
+
+            const isTrueFalse = q.question_type === 'true_false';
+
+            // دالة محسّنة لعرض النص
+            const getAnswerDisplay = (answer) => {
+              if (!answer) return { text: 'لم يتم الإجابة', color: '#999' };
+
+              if (isTrueFalse) {
+                return answer === 'TRUE'
+                  ? { text: '✓ صح', color: '#2e7d32' }
+                  : { text: '✗ خطأ', color: '#c62828' };
+              }
+
+              const options = {
+                'A': { text: q.option_a, label: 'أ' },
+                'B': { text: q.option_b, label: 'ب' },
+                'C': { text: q.option_c, label: 'ج' },
+                'D': { text: q.option_d, label: 'د' }
+              };
+
+              const opt = options[answer];
+              return opt
+                ? { text: `${opt.label}) ${opt.text || 'نص غير متوفر'}`, color: '#333' }
+                : { text: answer, color: '#666' };
             };
-            
-            const opt = options[answer];
-            return opt 
-              ? { text: `${opt.label}) ${opt.text || 'نص غير متوفر'}`, color: '#333' }
-              : { text: answer, color: '#666' };
-          };
 
-          const userAnswer = getAnswerDisplay(error.selected_answer);
-          const correctAnswer = getAnswerDisplay(q.correct_answer);
+            const userAnswer = getAnswerDisplay(error.selected_answer);
+            const correctAnswer = getAnswerDisplay(q.correct_answer);
 
-          errorsHTML += `
+            errorsHTML += `
             <div style="background: white; border: 2px solid #ffcdd2; border-radius: 10px; 
                         padding: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); 
                         transition: all 0.3s ease;">
@@ -1514,18 +2310,18 @@ const generateAllExamsCertificate = async () => {
               </div>
             </div>
           `;
-        });
+          });
 
-        errorsHTML += `
+          errorsHTML += `
             </div>
           </div>
         `;
-      });
+        });
 
-      errorsPage.innerHTML += errorsHTML;
+        errorsPage.innerHTML += errorsHTML;
 
-      // إضافة footer
-      errorsPage.innerHTML += `
+        // إضافة footer
+        errorsPage.innerHTML += `
         <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0; 
                     text-align: center; color: #666; font-size: 12px;">
           <p style="margin: 5px 0;">
@@ -1537,81 +2333,135 @@ const generateAllExamsCertificate = async () => {
         </div>
       `;
 
-      // إضافة للـ DOM
-      document.body.appendChild(errorsPage);
+        // إضافة للـ DOM
+        document.body.appendChild(errorsPage);
 
-      // انتظار التحميل الكامل
-      await document.fonts.ready;
-      await new Promise(resolve => setTimeout(resolve, 500));
+        // انتظار التحميل الكامل
+        await document.fonts.ready;
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-      // تصوير صفحة الأخطاء
-      console.log('📸 جاري تصوير صفحة الأخطاء...');
-      const canvas2 = await html2canvas(errorsPage, { 
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff',
-        logging: false,
-        imageTimeout: 0,
-        onclone: (clonedDoc) => {
-          // تأكد من تطبيق الأنماط على النسخة المستنسخة
-          const clonedEl = clonedDoc.querySelector('[style*="left: -9999px"]');
-          if (clonedEl) {
-            clonedEl.style.left = '0';
-            clonedEl.style.position = 'static';
+        // تصوير صفحة الأخطاء
+        console.log('📸 جاري تصوير صفحة الأخطاء...');
+        const canvas2 = await html2canvas(errorsPage, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 0,
+          onclone: (clonedDoc) => {
+            // تأكد من تطبيق الأنماط على النسخة المستنسخة
+            const clonedEl = clonedDoc.querySelector('[style*="left: -9999px"]');
+            if (clonedEl) {
+              clonedEl.style.left = '0';
+              clonedEl.style.position = 'static';
+            }
           }
-        }
-      });
-      
-      const img2 = canvas2.toDataURL('image/png', 0.95);
-      console.log('✅ تم تصوير صفحة الأخطاء بنجاح');
+        });
 
-      // إضافة صفحة جديدة
-      pdf.addPage();
-      pdf.addImage(img2, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
-      console.log('✅ تم إضافة صفحة الأخطاء إلى PDF');
+        const img2 = canvas2.toDataURL('image/png', 0.95);
+        console.log('✅ تم تصوير صفحة الأخطاء بنجاح');
 
-      // تنظيف
-      document.body.removeChild(errorsPage);
-      console.log('🧹 تم تنظيف DOM');
-    } else {
-      console.log('ℹ️ لا توجد أخطاء - تم إنشاء الشهادة فقط');
+        // إضافة صفحة جديدة
+        pdf.addPage();
+        pdf.addImage(img2, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
+        console.log('✅ تم إضافة صفحة الأخطاء إلى PDF');
+
+        // تنظيف
+        document.body.removeChild(errorsPage);
+        console.log('🧹 تم تنظيف DOM');
+      } else {
+        console.log('ℹ️ لا توجد أخطاء - تم إنشاء الشهادة فقط');
+      }
+
+      // ========== حفظ الملف ==========
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const fileName = `شهادة-${userName?.replace(/\s+/g, '-') || 'طالب'}-${timestamp}.pdf`;
+      pdf.save(fileName);
+
+      // رسالة نجاح مخصصة
+      const successMessage = hasErrors
+        ? `✅ تم تحميل الشهادة مع تحليل ${wrongAnswers.length} ${wrongAnswers.length === 1 ? 'خطأ' : 'خطأ'} بنجاح!`
+        : '✅ تم تحميل الشهادة بنجاح! (أداء ممتاز بدون أخطاء 🎉)';
+
+      console.log(`💾 تم حفظ الملف: ${fileName}`);
+      toast.success(successMessage);
+
+    } catch (error) {
+      console.error('❌ خطأ حرج في توليد الشهادة:', error);
+
+      // رسالة خطأ أكثر وضوحاً
+      let errorMessage = 'تعذّر توليد الشهادة';
+      if (error.message?.includes('fetch')) {
+        errorMessage = 'خطأ في الاتصال بقاعدة البيانات';
+      } else if (error.message?.includes('canvas')) {
+        errorMessage = 'خطأ في معالجة الصورة';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(`${errorMessage} ❌`);
+    } finally {
+      setIsCertGenerating(false);
     }
-
-    // ========== حفظ الملف ==========
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    const fileName = `شهادة-${userName?.replace(/\s+/g, '-') || 'طالب'}-${timestamp}.pdf`;
-    pdf.save(fileName);
-    
-    // رسالة نجاح مخصصة
-    const successMessage = hasErrors 
-      ? `✅ تم تحميل الشهادة مع تحليل ${wrongAnswers.length} ${wrongAnswers.length === 1 ? 'خطأ' : 'خطأ'} بنجاح!` 
-      : '✅ تم تحميل الشهادة بنجاح! (أداء ممتاز بدون أخطاء 🎉)';
-    
-    console.log(`💾 تم حفظ الملف: ${fileName}`);
-    toast.success(successMessage);
-
-  } catch (error) {
-    console.error('❌ خطأ حرج في توليد الشهادة:', error);
-    
-    // رسالة خطأ أكثر وضوحاً
-    let errorMessage = 'تعذّر توليد الشهادة';
-    if (error.message?.includes('fetch')) {
-      errorMessage = 'خطأ في الاتصال بقاعدة البيانات';
-    } else if (error.message?.includes('canvas')) {
-      errorMessage = 'خطأ في معالجة الصورة';
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    toast.error(`${errorMessage} ❌`);
-  } finally {
-    setIsCertGenerating(false);
-  }
-};
+  };
 
   return (
     <AnimatedBackground className="min-h-screen" dir="rtl">
+      {/* قالب الشهادة - مخفي */}
+      <div ref={certRef} style={{ position: 'fixed', left: '-9999px', direction: 'rtl' }} className="w-[794px] h-[1123px] bg-white p-8">
+        <div className="border-8 border-double border-[#665446] h-full p-8">
+          {/* رأس الشهادة */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-[#665446] mb-2" data-field="platform">واحة العلم التعليمية</h1>
+            <div className="text-2xl font-bold text-[#806445]">شهادة إتمام الاختبارات الشهرية</div>
+          </div>
+
+          {/* محتوى الشهادة */}
+          <div className="space-y-6">
+            <p className="text-xl text-center">
+              نشهد أن الطالب/ـة <strong className="text-[#665446]" data-field="student"></strong>
+              <br />قد أتم/ت الاختبارات الشهرية بنجاح
+            </p>
+
+            {/* جدول النتائج */}
+            <table className="w-full border-collapse mt-6" style={{ direction: 'rtl' }}>
+              <thead>
+                <tr className="bg-[#665446] text-white text-sm">
+                  <th className="border p-2">#</th>
+                  <th className="border p-2">الامتحان</th>
+                  <th className="border p-2">المادة</th>
+                  <th className="border p-2">الدرجة</th>
+                  <th className="border p-2">النسبة</th>
+                  <th className="border p-2">النتيجة</th>
+                  <th className="border p-2">التاريخ</th>
+                </tr>
+              </thead>
+              <tbody data-field="rows"></tbody>
+            </table>
+
+            <div className="mt-4 text-center">
+              <p className="font-bold text-lg">
+                المجموع الكلي: <span data-field="total"></span>
+              </p>
+            </div>
+          </div>
+
+          {/* توقيع الشهادة */}
+          <div className="absolute bottom-16 left-0 right-0 text-center space-y-4">
+            <p className="text-sm text-gray-600">
+              تاريخ الإصدار: <span data-field="date"></span>
+            </p>
+            <p className="text-sm text-gray-600">
+              رقم الشهادة: <span data-field="serial"></span>
+            </p>
+            <div className="mt-4">
+              <img data-field="qr" alt="QR Code" className="mx-auto w-32 h-32" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="min-h-screen flex flex-col px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10 overflow-visible">
         <ToastContainer
           position="top-right"
@@ -1699,27 +2549,32 @@ const generateAllExamsCertificate = async () => {
                               <p className="text-base sm:text-lg font-semibold text-gray-800 font-[Almarai] flex-1">
                                 {q.question_text}
                               </p>
+                              {q.image_url && (
+                                <div className="mt-3">
+                                  <img src={q.image_url} alt="صورة السؤال" className="w-full max-h-48 object-contain rounded" />
+                                </div>
+                              )}
                               <span className={`text-xs px-2 py-1 rounded-lg font-[Almarai] ${isTrueFalse
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-purple-100 text-purple-700'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-purple-100 text-purple-700'
                                 }`}>
                                 {isTrueFalse ? 'صح/خطأ' : 'اختيار متعدد'}
                               </span>
                             </div>
                             <span className="text-xs sm:text-sm text-gray-500 font-[Almarai]">
-                              ({q.marks} {q.marks === 1 ? 'درجة' : 'درجات'})
+                              ({q.max_marks} {q.max_marks === 1 ? 'درجة' : 'درجات'})
                             </span>
                           </div>
                         </div>
 
                         <div className="space-y-3 sm:mr-10">
-                          {isTrueFalse ? (
+                          {q.question_type === QUESTION_TYPES.TRUE_FALSE && (
                             // True/False Options
                             <>
                               <label
                                 className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${takingAnswers[q.id] === 'TRUE'
-                                    ? 'border-green-500 bg-green-50'
-                                    : 'border-gray-300 hover:border-green-500 hover:bg-gray-50'
+                                  ? 'border-green-500 bg-green-50'
+                                  : 'border-gray-300 hover:border-green-500 hover:bg-gray-50'
                                   }`}
                               >
                                 <input
@@ -1738,8 +2593,8 @@ const generateAllExamsCertificate = async () => {
 
                               <label
                                 className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${takingAnswers[q.id] === 'FALSE'
-                                    ? 'border-red-500 bg-red-50'
-                                    : 'border-gray-300 hover:border-red-500 hover:bg-gray-50'
+                                  ? 'border-red-500 bg-red-50'
+                                  : 'border-gray-300 hover:border-red-500 hover:bg-gray-50'
                                   }`}
                               >
                                 <input
@@ -1756,14 +2611,16 @@ const generateAllExamsCertificate = async () => {
                                 </span>
                               </label>
                             </>
-                          ) : (
+                          )}
+
+                          {q.question_type === QUESTION_TYPES.MULTIPLE_CHOICE && (
                             // Multiple Choice Options
                             ENGLISH_OPTIONS.map((opt) => (
                               <label
                                 key={opt}
                                 className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition ${takingAnswers[q.id] === opt
-                                    ? 'border-[#665446] bg-[#665446]/10'
-                                    : 'border-gray-300 hover:border-[#665446] hover:bg-gray-50'
+                                  ? 'border-[#665446] bg-[#665446]/10'
+                                  : 'border-gray-300 hover:border-[#665446] hover:bg-gray-50'
                                   }`}
                               >
                                 <input
@@ -1810,8 +2667,8 @@ const generateAllExamsCertificate = async () => {
                       onClick={submitExamManually}
                       disabled={answeredCount === 0}
                       className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold font-[Almarai] transition ${answeredCount === 0
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-md hover:shadow-lg'
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-md hover:shadow-lg'
                         }`}
                     >
                       تسليم الامتحان ({answeredCount}/{totalQuestions})
@@ -1842,8 +2699,8 @@ const generateAllExamsCertificate = async () => {
                   <button
                     onClick={() => setActiveTab('all')}
                     className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${activeTab === 'all'
-                        ? 'bg-[#665446] text-white'
-                        : 'bg-transparent text-gray-600 hover:bg-gray-100'
+                      ? 'bg-[#665446] text-white'
+                      : 'bg-transparent text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     كل الامتحانات
@@ -1851,8 +2708,8 @@ const generateAllExamsCertificate = async () => {
                   <button
                     onClick={() => setActiveTab('level1')}
                     className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${activeTab === 'level1'
-                        ? 'bg-[#665446] text-white'
-                        : 'bg-transparent text-gray-600 hover:bg-gray-100'
+                      ? 'bg-[#665446] text-white'
+                      : 'bg-transparent text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     المستوى الأول
@@ -1860,8 +2717,8 @@ const generateAllExamsCertificate = async () => {
                   <button
                     onClick={() => setActiveTab('level2')}
                     className={`px-6 py-2 rounded-md font-bold font-[Almarai] transition ${activeTab === 'level2'
-                        ? 'bg-[#665446] text-white'
-                        : 'bg-transparent text-gray-600 hover:bg-gray-100'
+                      ? 'bg-[#665446] text-white'
+                      : 'bg-transparent text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     التمهيدي
@@ -1875,8 +2732,8 @@ const generateAllExamsCertificate = async () => {
                   onClick={generateAllExamsCertificate}
                   disabled={!isCertificateAvailable() || isCertGenerating}
                   className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold font-[Almarai] transition-all ${(!isCertificateAvailable() || isCertGenerating)
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
                     }`}
                   title="تحميل الشهادة (تظهر بعد مرور ساعتين من أول امتحان مكتمل)"
                 >
@@ -2075,8 +2932,8 @@ const generateAllExamsCertificate = async () => {
                               onClick={() => startExam(exam)}
                               disabled={!exam.is_active || hasCompleted}
                               className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold font-[Almarai] transition-all ${!exam.is_active || hasCompleted
-                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-lg hover:shadow-xl'
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-[#665446] hover:bg-[#8B7355] text-white shadow-lg hover:shadow-xl'
                                 }`}
                             >
                               {hasCompleted ? 'تم الإنهاء' : 'بدء الامتحان'}
@@ -2154,7 +3011,7 @@ const generateAllExamsCertificate = async () => {
                     </label>
                     <input
                       type="text"
-                      value={examForm.title}
+                      value={examForm.title ?? ''}
                       onChange={(e) => setExamForm({ ...examForm, title: e.target.value })}
                       placeholder="مثال: امتحان شهر سبتمبر"
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
@@ -2167,7 +3024,7 @@ const generateAllExamsCertificate = async () => {
                     </label>
                     <input
                       type="text"
-                      value={examForm.subject}
+                      value={examForm.subject ?? ''}
                       onChange={(e) => setExamForm({ ...examForm, subject: e.target.value })}
                       placeholder="مثال: الرياضيات"
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
@@ -2180,7 +3037,7 @@ const generateAllExamsCertificate = async () => {
                     </label>
                     <input
                       type="text"
-                      value={examForm.month}
+                      value={examForm.month ?? ''}
                       onChange={(e) => setExamForm({ ...examForm, month: e.target.value })}
                       placeholder="مثال: سبتمبر"
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
@@ -2190,7 +3047,7 @@ const generateAllExamsCertificate = async () => {
                         المستوى *
                       </label>
                       <select
-                        value={examForm.level_scope}
+                        value={examForm.level_scope ?? 'shared'}
                         onChange={(e) => setExamForm({ ...examForm, level_scope: e.target.value })}
                         className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                       >
@@ -2208,7 +3065,7 @@ const generateAllExamsCertificate = async () => {
                     <input
                       type="number"
                       min="1"
-                      value={examForm.duration_minutes}
+                      value={examForm.duration_minutes ?? DEFAULT_DURATION_MIN}
                       onChange={(e) => setExamForm({ ...examForm, duration_minutes: e.target.value })}
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                     />
@@ -2221,7 +3078,7 @@ const generateAllExamsCertificate = async () => {
                     <input
                       type="number"
                       min="1"
-                      value={examForm.total_marks}
+                      value={examForm.total_marks ?? 100}
                       onChange={(e) => setExamForm({ ...examForm, total_marks: e.target.value })}
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                     />
@@ -2234,7 +3091,7 @@ const generateAllExamsCertificate = async () => {
                     <input
                       type="number"
                       min="1"
-                      value={examForm.pass_marks}
+                      value={examForm.pass_marks ?? 50}
                       onChange={(e) => setExamForm({ ...examForm, pass_marks: e.target.value })}
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                     />
@@ -2244,11 +3101,11 @@ const generateAllExamsCertificate = async () => {
                     <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
                       تاريخ البدء *
                     </label>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={examForm.start_date}
-                      onChange={(e) => setExamForm({ ...examForm, start_date: e.target.value })}
+                      <input
+                        type="datetime-local"
+                        required
+                        value={examForm.start_date ?? ''}
+                        onChange={(e) => setExamForm({ ...examForm, start_date: e.target.value })}
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                     />
                   </div>
@@ -2257,12 +3114,12 @@ const generateAllExamsCertificate = async () => {
                     <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
                       تاريخ الانتهاء *
                     </label>
-                    <input
-                      type="datetime-local"
-                      required
-                      min={examForm.start_date || undefined}
-                      value={examForm.end_date}
-                      onChange={(e) => setExamForm({ ...examForm, end_date: e.target.value })}
+                      <input
+                        type="datetime-local"
+                        required
+                        min={examForm.start_date || undefined}
+                        value={examForm.end_date ?? ''}
+                        onChange={(e) => setExamForm({ ...examForm, end_date: e.target.value })}
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                     />
                   </div>
@@ -2276,7 +3133,7 @@ const generateAllExamsCertificate = async () => {
                     </label>
                     <textarea
                       rows={3}
-                      value={examForm.description}
+                      value={examForm.description ?? ''}
                       onChange={(e) => setExamForm({ ...examForm, description: e.target.value })}
                       placeholder="وصف مختصر للامتحان..."
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
@@ -2290,7 +3147,7 @@ const generateAllExamsCertificate = async () => {
                     <input
                       id="is_active"
                       type="checkbox"
-                      checked={examForm.is_active}
+                      checked={!!examForm.is_active}
                       onChange={(e) => setExamForm({ ...examForm, is_active: e.target.checked })}
                       className="h-5 w-5 accent-[#665446]"
                     />
@@ -2361,124 +3218,149 @@ const generateAllExamsCertificate = async () => {
 
                       <div className="px-4 sm:px-5 pb-5 pt-1">
                         <div className="space-y-4">
-                          {/* Question Type Selector */}
-                          <div className="space-y-2">
-                            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                              نوع السؤال *
-                            </label>
-                            <select
-                              value={q.question_type || 'multiple_choice'}
-                              onChange={(e) => updateQuestion(index, 'question_type', e.target.value)}
-                              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                            >
-                              <option value="multiple_choice">اختيار من متعدد</option>
-                              <option value="true_false">صح أو خطأ</option>
-                            </select>
-                          </div>
 
-                          {/* Question Text */}
-                          <div className="space-y-2">
-                            <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                              نص السؤال *
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={q.question_text}
-                              onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
-                              placeholder="اكتب السؤال هنا..."
-                              className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                            />
-                          </div>
 
-                          {/* Options - Show based on question type */}
-                       {q.question_type === 'true_false' ? (
-  <div className="space-y-4">
-    {/* الإجابة الصحيحة */}
-    <div className="space-y-2">
-      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-        الإجابة الصحيحة *
-      </label>
-      <select
-        value={q.correct_answer}
-        onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
-        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-      >
-        <option value="TRUE">✓ صح</option>
-        <option value="FALSE">✗ خطأ</option>
-      </select>
-    </div>
+                          <div className="space-y-4">
+                            {/* نوع السؤال */}
+                            <div className="space-y-2">
+                              <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                نوع السؤال *
+                              </label>
+                              <select
+                                value={q.question_type ?? QUESTION_TYPES.MULTIPLE_CHOICE}
+                                onChange={(e) => updateQuestion(index, 'question_type', e.target.value)}
+                                className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                              >
+                                <option value="multiple_choice">اختيار من متعدد</option>
+                                <option value="true_false">صح أو خطأ</option>
+                                <option value="essay">سؤال مقالي</option>
+                                <option value="correct_underlined">تصحيح ما تحته خط</option>
+                              </select>
+                            </div>
 
-    {/* ✅ أضف هنا: حقل الدرجات */}
-    <div className="space-y-2">
-      <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-        الدرجات
-      </label>
-      <input
-        type="number"
-        min="1"
-        value={q.marks || 1}
-        onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
-        className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-      />
-    </div>
-  </div>
-) : (
-                            // Multiple Choice Options
-                            <>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                                    الخيار أ *
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={q.option_a}
-                                    onChange={(e) => updateQuestion(index, 'option_a', e.target.value)}
-                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                                    الخيار ب *
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={q.option_b}
-                                    onChange={(e) => updateQuestion(index, 'option_b', e.target.value)}
-                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                                    الخيار ج *
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={q.option_c}
-                                    onChange={(e) => updateQuestion(index, 'option_c', e.target.value)}
-                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                                    الخيار د *
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={q.option_d}
-                                    onChange={(e) => updateQuestion(index, 'option_d', e.target.value)}
-                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
-                                  />
-                                </div>
+                            {/* نص السؤال */}
+                            <div className="space-y-2">
+                              <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                نص السؤال *
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={q.question_text ?? ''}
+                                onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
+                                placeholder="اكتب السؤال هنا..."
+                                className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                              />
+                            </div>
+
+                            {/* درجة السؤال */}
+                            <div className="space-y-2">
+                              <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                درجة السؤال *
+                              </label>
+                              <input
+                                type="number"
+                                value={q.max_marks ?? 1}
+                                onChange={(e) => updateQuestion(index, 'max_marks', parseInt(e.target.value) || 1)}
+                                min="1"
+                                className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                              />
+                            </div>
+
+                            {/* مستوى الصعوبة */}
+                            <div className="space-y-2">
+                              <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                مستوى الصعوبة
+                              </label>
+                              <select
+                                value={q.difficulty_level ?? DIFFICULTY_LEVELS.MEDIUM}
+                                onChange={(e) => updateQuestion(index, 'difficulty_level', e.target.value)}
+                                className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                              >
+                                <option value="easy">سهل</option>
+                                <option value="medium">متوسط</option>
+                                <option value="hard">صعب</option>
+                              </select>
+                            </div>
+
+                            {/* ========== نماذج الإجابات حسب نوع السؤال ========== */}
+
+                            {/* 1️⃣ صح أو خطأ */}
+                            {q.question_type === 'true_false' && (
+                              <div className="space-y-2 bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
+                                <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                  الإجابة الصحيحة *
+                                </label>
+                                <select
+                                  value={q.correct_answer ?? ''}
+                                  onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
+                                  className="w-full rounded-xl border-2 border-blue-300 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                >
+                                  <option value="TRUE">✓ صح</option>
+                                  <option value="FALSE">✗ خطأ</option>
+                                </select>
                               </div>
+                            )}
 
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* 2️⃣ اختيار من متعدد */}
+                            {q.question_type === 'multiple_choice' && (
+                              <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                      الخيار أ *
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={q.option_a ?? ''}
+                                      onChange={(e) => updateQuestion(index, 'option_a', e.target.value)}
+                                      placeholder="النص هنا..."
+                                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                      الخيار ب *
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={q.option_b ?? ''}
+                                      onChange={(e) => updateQuestion(index, 'option_b', e.target.value)}
+                                      placeholder="النص هنا..."
+                                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                      الخيار ج *
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={q.option_c ?? ''}
+                                      onChange={(e) => updateQuestion(index, 'option_c', e.target.value)}
+                                      placeholder="النص هنا..."
+                                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                      الخيار د *
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={q.option_d ?? ''}
+                                      onChange={(e) => updateQuestion(index, 'option_d', e.target.value)}
+                                      placeholder="النص هنا..."
+                                      className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                    />
+                                  </div>
+                                </div>
+
                                 <div className="space-y-2">
                                   <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
                                     الإجابة الصحيحة *
                                   </label>
                                   <select
-                                    value={q.correct_answer}
+                                    value={q.correct_answer ?? 'A'}
                                     onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
                                     className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                                   >
@@ -2489,22 +3371,140 @@ const generateAllExamsCertificate = async () => {
                                     ))}
                                   </select>
                                 </div>
+                              </>
+                            )}
+
+                            {/* 3️⃣ تصحيح ما تحته خط */}
+                            {q.question_type === 'correct_underlined' && (
+                              <div className="space-y-3 bg-amber-50 p-4 rounded-xl border-2 border-amber-200">
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    النص أو الكلمة الخاطئة *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={q.option_a || ''}
+                                    onChange={(e) => updateQuestion(index, 'option_a', e.target.value)}
+                                    placeholder="مثال: القاهره عاصمة مصر"
+                                    className="w-full rounded-xl border-2 border-amber-300 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                  <p className="text-xs text-gray-600 font-[Almarai]">
+                                    💡 هذا هو النص الذي يحتوي على الخطأ المطلوب تصحيحه
+                                  </p>
+                                </div>
 
                                 <div className="space-y-2">
                                   <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
-                                    الدرجات
+                                    التصحيح الصحيح *
                                   </label>
                                   <input
-                                    type="number"
-                                    min="1"
-                                    value={q.marks}
-                                    onChange={(e) => updateQuestion(index, 'marks', e.target.value)}
-                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                    type="text"
+                                    value={q.correct_answer || ''}
+                                    onChange={(e) => updateQuestion(index, 'correct_answer', e.target.value)}
+                                    placeholder="مثال: القاهرة عاصمة مصر"
+                                    className="w-full rounded-xl border-2 border-green-300 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                  <p className="text-xs text-gray-600 font-[Almarai]">
+                                    ✅ هذه هي الإجابة الصحيحة بعد التصحيح
+                                  </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    شرح الخطأ (اختياري)
+                                  </label>
+                                  <textarea
+                                    rows={2}
+                                    value={q.explanation || ''}
+                                    onChange={(e) => updateQuestion(index, 'explanation', e.target.value)}
+                                    placeholder="مثال: الخطأ في كتابة التاء المربوطة بالهاء"
+                                    className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                                   />
                                 </div>
                               </div>
-                            </>
-                          )}
+                            )}
+
+                            {/* 4️⃣ سؤال مقالي */}
+                            {q.question_type === 'essay' && (
+                              <div className="space-y-3 bg-purple-50 p-4 rounded-xl border-2 border-purple-200">
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    الإجابة النموذجية (للمعلم فقط) *
+                                  </label>
+                                  <textarea
+                                    rows={4}
+                                    value={q.model_answer || ''}
+                                    onChange={(e) => updateQuestion(index, 'model_answer', e.target.value)}
+                                    placeholder="اكتب الإجابة المثالية التي تتوقعها من الطالب..."
+                                    className="w-full rounded-xl border-2 border-purple-300 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
+                                    معايير التصحيح (Rubric) *
+                                  </label>
+                                  <textarea
+                                    rows={3}
+                                    value={q.grading_rubric || ''}
+                                    onChange={(e) => updateQuestion(index, 'grading_rubric', e.target.value)}
+                                    placeholder={"مثال:\n- الفكرة الرئيسية واضحة (3 درجات)\n- التنظيم والترتيب (2 درجة)\n- السلامة اللغوية (2 درجة)"}
+                                    className="w-full rounded-xl border-2 border-purple-300 bg-white px-4 py-3 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
+                                  />
+                                  <p className="text-xs text-gray-600 font-[Almarai]">
+                                    📝 حدد كيف ستوزع الدرجات على عناصر الإجابة
+                                  </p>
+                                </div>
+
+                                <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+                                  <p className="text-xs text-yellow-800 font-[Almarai] flex items-center gap-2">
+                                    <span className="text-lg">⚠️</span>
+                                    <span>الأسئلة المقالية تحتاج تصحيح يدوي من المعلم بعد تسليم الطالب</span>
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* Image upload + preview for question */}
+                          <div className="mt-4">
+                            <label className="block text-xs font-bold font-[Almarai] mb-2" style={{ color: TEXT_COLOR }}>
+                              صورة السؤال (اختياري)
+                            </label>
+                            <div className="flex items-center gap-3">
+                              <input
+                                id={`q-image-${index}`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files && e.target.files[0];
+                                  if (f) handleQuestionImageUpload(index, f);
+                                }}
+                              />
+
+                              <label htmlFor={`q-image-${index}`} className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer">
+                                <Upload className="w-4 h-4" />
+                                <span className="text-sm font-[Almarai]">اختر صورة</span>
+                              </label>
+
+                              {q.image_url && (
+                                <div className="flex items-center gap-2">
+                                  <img src={q.image_url} alt="معاينة" className="w-16 h-16 object-cover rounded" />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateQuestion(index, 'image_url', '');
+                                      updateQuestion(index, 'image_metadata', null);
+                                    }}
+                                    className="px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
+                                  >
+                                    إزالة
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
                         </div>
                       </div>
                     </details>
@@ -2639,8 +3639,8 @@ const generateAllExamsCertificate = async () => {
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className={`px-3 py-1 rounded-full text-sm font-bold font-[Almarai] ${(attempt.percentage || 0) >= ((selectedExam.pass_marks / selectedExam.total_marks) * 100)
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
                                   }`}>
                                   {(attempt.percentage || 0).toFixed(1)}%
                                 </span>
