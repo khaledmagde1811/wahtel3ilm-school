@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // src/Pages/StudentExams.js
+=======
+// src/Pages/StudentExams.js - FIXED VERSION
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../Utilities/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -199,6 +203,10 @@ const StudentExams = () => {
     setFilteredExams(paginated);
   };
 
+<<<<<<< HEAD
+=======
+  // ✅ دالة محدثة لقراءة الأسئلة من قاعدة البيانات
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
   const normalizeQuestionForDisplay = (dbQuestion) => {
     const baseQuestion = {
       id: dbQuestion.id,
@@ -219,6 +227,7 @@ const StudentExams = () => {
         };
 
       case QUESTION_TYPES.MULTIPLE_CHOICE: {
+<<<<<<< HEAD
         const option_a = dbQuestion.option_a || '';
         const option_b = dbQuestion.option_b || '';
         const option_c = dbQuestion.option_c || '';
@@ -231,6 +240,30 @@ const StudentExams = () => {
           option_c,
           option_d,
           options: [option_a, option_b, option_c, option_d]
+=======
+        // ✅ قراءة من حقل options (JSONB)
+        let options = ['', '', '', ''];
+        
+        if (dbQuestion.options) {
+          if (Array.isArray(dbQuestion.options)) {
+            options = dbQuestion.options;
+          } else if (typeof dbQuestion.options === 'string') {
+            try {
+              options = JSON.parse(dbQuestion.options);
+            } catch (e) {
+              console.error('فشل تحليل options:', e);
+            }
+          }
+        }
+
+        return {
+          ...baseQuestion,
+          options: options,
+          option_a: options[0] || '',
+          option_b: options[1] || '',
+          option_c: options[2] || '',
+          option_d: options[3] || ''
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
         };
       }
 
@@ -241,12 +274,37 @@ const StudentExams = () => {
           grading_rubric: dbQuestion.grading_rubric
         };
 
+<<<<<<< HEAD
       case QUESTION_TYPES.CORRECT_UNDERLINED:
         return {
           ...baseQuestion,
           option_a: dbQuestion.option_a,
           correct_answer: dbQuestion.correct_answer
         };
+=======
+      case QUESTION_TYPES.CORRECT_UNDERLINED: {
+        // ✅ النص الخاطئ محفوظ في options[0]
+        let wrongText = '';
+        if (dbQuestion.options) {
+          if (Array.isArray(dbQuestion.options)) {
+            wrongText = dbQuestion.options[0] || '';
+          } else if (typeof dbQuestion.options === 'string') {
+            try {
+              const parsed = JSON.parse(dbQuestion.options);
+              wrongText = parsed[0] || '';
+            } catch (e) {
+              console.error('فشل تحليل options:', e);
+            }
+          }
+        }
+
+        return {
+          ...baseQuestion,
+          option_a: wrongText,
+          correct_answer: dbQuestion.correct_answer
+        };
+      }
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
 
       default:
         return baseQuestion;
@@ -302,7 +360,14 @@ const StudentExams = () => {
         return;
       }
 
+<<<<<<< HEAD
       const normalizedQuestions = qs.map(q => normalizeQuestionForDisplay(q));
+=======
+      // ✅ استخدام الدالة المحدثة
+      const normalizedQuestions = qs.map(q => normalizeQuestionForDisplay(q));
+      
+      console.log('✅ الأسئلة المطبعة:', normalizedQuestions);
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
 
       setTakingExam({
         ...attempt,
@@ -453,6 +518,12 @@ const StudentExams = () => {
         throw new Error('لم يتم العثور على أسئلة للامتحان');
       }
 
+<<<<<<< HEAD
+=======
+      // ✅ تطبيع الأسئلة
+      const normalizedQuestions = questions.map(q => normalizeQuestionForDisplay(q));
+
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
       const { data: existingAnswers } = await supabase
         .from('exam_answers')
         .select('question_id, selected_answer')
@@ -465,7 +536,11 @@ const StudentExams = () => {
       const newAnswers = [];
       const answersToUpdate = [];
 
+<<<<<<< HEAD
       questions.forEach(q => {
+=======
+      normalizedQuestions.forEach(q => {
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
         const studentAnswerRaw = takingAnswers[q.id];
         if (studentAnswerRaw === undefined || studentAnswerRaw === null || studentAnswerRaw === '') return;
 
@@ -510,10 +585,17 @@ const StudentExams = () => {
       let totalMarks = Number(takingExam.total_marks) || 0;
 
       if (!totalMarks) {
+<<<<<<< HEAD
         totalMarks = questions.reduce((sum, q) => sum + Number(q.max_marks || 1), 0);
       }
 
       questions.forEach(q => {
+=======
+        totalMarks = normalizedQuestions.reduce((sum, q) => sum + Number(q.max_marks || 1), 0);
+      }
+
+      normalizedQuestions.forEach(q => {
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
         const studentAns = normalizeAnswer(q, takingAnswers[q.id]);
         const correctAns = normalizeAnswer(q, q.correct_answer);
         const isCorrect = studentAns && studentAns === correctAns;
@@ -850,11 +932,14 @@ const StudentExams = () => {
                               <p className="text-base sm:text-lg font-semibold text-gray-800 font-[Almarai] flex-1">
                                 {q.question_text}
                               </p>
+<<<<<<< HEAD
                               {q.image_url && (
                                 <div className="mt-3">
                                   <img src={q.image_url} alt="صورة السؤال" className="w-full max-h-48 object-contain rounded" />
                                 </div>
                               )}
+=======
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
                               <span className={`text-xs px-2 py-1 rounded-lg font-[Almarai] ${isTrueFalse
                                 ? 'bg-blue-100 text-blue-700'
                                 : 'bg-purple-100 text-purple-700'
@@ -862,6 +947,14 @@ const StudentExams = () => {
                                 {isTrueFalse ? 'صح/خطأ' : 'اختيار متعدد'}
                               </span>
                             </div>
+<<<<<<< HEAD
+=======
+                            {q.image_url && (
+                              <div className="mt-3">
+                                <img src={q.image_url} alt="صورة السؤال" className="w-full max-h-48 object-contain rounded" />
+                              </div>
+                            )}
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
                             <span className="text-xs sm:text-sm text-gray-500 font-[Almarai]">
                               ({q.max_marks} {q.max_marks === 1 ? 'درجة' : 'درجات'})
                             </span>
@@ -953,6 +1046,7 @@ const StudentExams = () => {
                           )}
 
                           {q.question_type === QUESTION_TYPES.CORRECT_UNDERLINED && (
+<<<<<<< HEAD
                             <input
                               type="text"
                               value={takingAnswers[q.id] || ''}
@@ -960,6 +1054,25 @@ const StudentExams = () => {
                               placeholder="اكتب التصحيح هنا..."
                               className="w-full rounded-xl border-2 border-gray-300 p-4 font-[Almarai] focus:border-[#665446] focus:outline-none"
                             />
+=======
+                            <div className="space-y-3">
+                              <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
+                                <p className="text-sm text-amber-800 font-[Almarai] mb-2">
+                                  ❌ النص الخاطئ:
+                                </p>
+                                <p className="text-base font-semibold text-gray-800 font-[Almarai]">
+                                  {q.option_a}
+                                </p>
+                              </div>
+                              <input
+                                type="text"
+                                value={takingAnswers[q.id] || ''}
+                                onChange={(e) => updateTakingAnswer(q.id, e.target.value)}
+                                placeholder="اكتب التصحيح الصحيح هنا..."
+                                className="w-full rounded-xl border-2 border-gray-300 p-4 font-[Almarai] focus:border-[#665446] focus:outline-none"
+                              />
+                            </div>
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
                           )}
                         </div>
                       </article>
@@ -1267,17 +1380,28 @@ const StudentExams = () => {
                       التمهيدي
                     </h3>
                     <p className="text-sm text-gray-600 font-[Almarai]">
+<<<<<<< HEAD
                       المرحلة التمهيدية
+=======
+                      المستوى التمهيدي
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
                     </p>
                   </div>
                 </div>
               </button>
+<<<<<<< HEAD
             </div>
 
             <div className="px-6 pb-6">
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
                 <p className="text-xs text-blue-700 font-[Almarai]">
                   💡 يمكنك تغيير المستوى لاحقاً من التبويبات أعلى الصفحة
+=======
+
+              <div className="pt-4 border-t border-gray-200">
+                <p className="text-xs text-center text-gray-500 font-[Almarai]">
+                  يمكنك تغيير المستوى في أي وقت من خلال التبديل بين التبويبات
+>>>>>>> ab3b5ef (تحديث المشروع وإصلاح الأخطاء)
                 </p>
               </div>
             </div>

@@ -347,110 +347,171 @@ const AboutCourse = () => {
     );
   }
 
-  return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-[#F5F1ED] via-[#FAF8F6] to-[#F5F1ED] py-8 sm:py-12 md:py-16 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8 sm:mb-12 md:mb-16 space-y-4 sm:space-y-6">
-          <div className="inline-flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full shadow-sm">
-            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
-            <span className="text-[#665446] font-['Almarai'] font-bold text-xs sm:text-sm">دورات مختارة بعناية</span>
-          </div>
-          
-          <h2 className="text-[#665446] text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-['Almarai'] px-4">
-            ابدأ رحلتك التعليمية
-          </h2>
-          
-          <p className="text-[#8B7355] text-sm sm:text-base md:text-lg lg:text-xl font-['Almarai'] max-w-2xl mx-auto leading-relaxed px-4">
-            استكشف مجموعة متنوعة من الدورات الشرعية المصممة خصيصاً للمبتدئين والمتقدمين
-          </p>
+return (
+  <div className="w-full min-h-screen bg-[#F5F1ED] py-8 sm:py-12 md:py-16 px-4 relative overflow-hidden">
+    {/* animated background */}
+    <div className="pointer-events-none absolute inset-0 -z-0">
+      {/* big blob right */}
+      <div className="absolute -top-20 right-[-80px] w-72 h-72 sm:w-96 sm:h-96 bg-gradient-to-br from-amber-200/55 via-orange-200/35 to-transparent rounded-full blur-3xl animate-blob-slow" />
+      {/* big blob left */}
+      <div className="absolute bottom-[-90px] left-[-60px] w-64 h-64 sm:w-80 sm:h-80 bg-gradient-to-tl from-[#665446]/18 via-[#8B7355]/28 to-transparent rounded-full blur-3xl animate-blob" />
+      {/* dots */}
+      <div className="absolute top-1/3 left-10 w-2 h-2 bg-amber-400/70 rounded-full animate-float-slow" />
+      <div className="absolute top-1/5 right-24 w-3 h-3 bg-orange-400/60 rounded-full animate-float" />
+      <div className="absolute bottom-1/4 right-10 w-2 h-2 bg-yellow-400/70 rounded-full animate-float-slower" />
+    </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mt-6 sm:mt-8 max-w-4xl mx-auto px-4">
-            {[
-              { value: stats.totalCourses, label: 'دورة', icon: <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />, gradient: 'from-amber-500 to-orange-500', bgGradient: 'from-amber-50 to-orange-50', borderColor: 'border-amber-200' },
-              { value: stats.totalStudents, label: 'طالب', icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />, gradient: 'from-[#665446] to-[#8B7355]', bgGradient: 'from-amber-50/50 to-orange-50/50', borderColor: 'border-[#665446]/20' },
-              { value: stats.totalLessons, label: 'درس', icon: <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />, gradient: 'from-yellow-600 to-amber-600', bgGradient: 'from-yellow-50 to-amber-50', borderColor: 'border-yellow-200' },
-              { value: stats.totalLevels, label: 'مستوى', icon: <Target className="w-4 h-4 sm:w-5 sm:h-5" />, gradient: 'from-orange-600 to-red-500', bgGradient: 'from-orange-50 to-red-50', borderColor: 'border-orange-200' },
-            ].map((stat, index) => (
-              <div key={index} className={`bg-gradient-to-br ${stat.bgGradient} rounded-xl p-3 sm:p-4 md:p-6 shadow-md border ${stat.borderColor} hover:shadow-xl transition-all duration-300 hover:scale-105`}>
-                <div className={`bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent mb-1 sm:mb-2`}>{stat.icon}</div>
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-[#665446] font-['Almarai']">{stat.value}</div>
-                <div className="text-xs sm:text-sm text-[#8B7355] font-['Almarai']">{stat.label}</div>
-              </div>
-            ))}
-          </div>
+    <div className="max-w-7xl mx-auto relative z-10">
+      {/* Header */}
+      <div className="text-center mb-8 sm:mb-12 md:mb-16 space-y-4 sm:space-y-6">
+        <div className="inline-flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full shadow-sm">
+          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+          <span className="text-[#665446] font-['Almarai'] font-bold text-xs sm:text-sm">دورات مختارة بعناية</span>
         </div>
+        
+        <h2 className="text-[#665446] text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-['Almarai'] px-4">
+          ابدأ رحلتك التعليمية
+        </h2>
+        
+        <p className="text-[#8B7355] text-sm sm:text-base md:text-lg lg:text-xl font-['Almarai'] max-w-2xl mx-auto leading-relaxed px-4">
+          استكشف مجموعة متنوعة من الدورات الشرعية المصممة خصيصاً للمبتدئين والمتقدمين
+        </p>
 
-        {/* Courses Slider */}
-        {courses.length === 0 ? (
-          <div className="text-center py-12 sm:py-16 bg-gradient-to-br from-white via-amber-50/20 to-orange-50/20 rounded-2xl sm:rounded-3xl shadow-lg mx-4 border border-amber-100">
-            <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-amber-500 mx-auto mb-4 sm:mb-6" />
-            <p className="text-[#665446] text-xl sm:text-2xl font-['Almarai'] font-bold mb-2">لا توجد دورات متاحة حالياً</p>
-            <p className="text-[#8B7355] font-['Almarai'] text-sm sm:text-base">ترقب إضافة دورات جديدة قريباً</p>
-          </div>
-        ) : (
-          <div className="relative pb-12 sm:pb-16">
-            <div className="courses-slider-container">
-              <Slider ref={sliderRef} {...settings}>
-                {courses.map((course) => (
-                  <CourseCard
-                    key={course.id}
-                    course={course}
-                    totalStudents={Math.floor((stats.totalStudents || 0) / courses.length)}
-                    totalLessons={course.lessons_count}
-                  />
-                ))}
-              </Slider>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mt-6 sm:mt-8 max-w-4xl mx-auto px-4">
+          {[
+            { value: stats.totalCourses, label: 'دورة', icon: <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />, gradient: 'from-amber-500 to-orange-500', bgGradient: 'from-amber-50 to-orange-50', borderColor: 'border-amber-200' },
+            { value: stats.totalStudents, label: 'طالب', icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />, gradient: 'from-[#665446] to-[#8B7355]', bgGradient: 'from-amber-50/50 to-orange-50/50', borderColor: 'border-[#665446]/20' },
+            { value: stats.totalLessons, label: 'درس', icon: <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />, gradient: 'from-yellow-600 to-amber-600', bgGradient: 'from-yellow-50 to-amber-50', borderColor: 'border-yellow-200' },
+            { value: stats.totalLevels, label: 'مستوى', icon: <Target className="w-4 h-4 sm:w-5 sm:h-5" />, gradient: 'from-orange-600 to-red-500', bgGradient: 'from-orange-50 to-red-50', borderColor: 'border-orange-200' },
+          ].map((stat, index) => (
+            <div
+              key={index}
+              className={`bg-gradient-to-br ${stat.bgGradient} rounded-xl p-3 sm:p-4 md:p-6 shadow-md border ${stat.borderColor} hover:shadow-xl transition-all duration-300 hover:scale-105`}
+            >
+              <div className={`bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent mb-1 sm:mb-2`}>
+                {stat.icon}
+              </div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-[#665446] font-['Almarai']">{stat.value}</div>
+              <div className="text-xs sm:text-sm text-[#8B7355] font-['Almarai']">{stat.label}</div>
             </div>
-          </div>
-        )}
-
-        {/* CTA Section */}
-        <div className="mt-8 sm:mt-12 md:mt-16 px-4">
-          <div className="bg-gradient-to-br from-[#665446] to-[#8B7355] rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 text-center shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40" />
-            
-            <div className="relative z-10 space-y-4 sm:space-y-6">
-              <GraduationCap className="w-10 h-10 sm:w-12 sm:h-12 text-white mx-auto" />
-              <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white font-['Almarai']">
-                مستعد للبدء؟
-              </h3>
-              <p className="text-white/90 font-['Almarai'] text-sm sm:text-base md:text-lg max-w-2xl mx-auto">
-                انضم إلى مجتمعنا التعليمي واستفد من محتوى تعليمي عالي الجودة مع دعم مستمر من المختصين
-              </p>
-              <Link
-                to="/courses"
-                className="inline-flex items-center gap-2 sm:gap-3 bg-white text-[#665446] hover:bg-gray-50 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold font-['Almarai'] text-sm sm:text-base md:text-lg transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
-              >
-                <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>استكشف جميع الدورات</span>
-                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
-              </Link>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      <style jsx>{`
-        .courses-slider-container .slick-slide > div {
-          display: flex;
-          justify-content: center;
-        }
-        
-        .courses-slider-container .slick-track {
-          display: flex;
-          align-items: stretch;
-        }
-        
-        @media (max-width: 640px) {
-          .courses-slider-container .slick-slide {
-            padding: 0;
-          }
-        }
-      `}</style>
+      {/* Courses Slider */}
+      {courses.length === 0 ? (
+        <div className="text-center py-12 sm:py-16 bg-gradient-to-br from-white via-amber-50/20 to-orange-50/20 rounded-2xl sm:rounded-3xl shadow-lg mx-4 border border-amber-100">
+          <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-amber-500 mx-auto mb-4 sm:mb-6" />
+          <p className="text-[#665446] text-xl sm:text-2xl font-['Almarai'] font-bold mb-2">لا توجد دورات متاحة حالياً</p>
+          <p className="text-[#8B7355] font-['Almarai'] text-sm sm:text-base">ترقب إضافة دورات جديدة قريباً</p>
+        </div>
+      ) : (
+        <div className="relative pb-12 sm:pb-16">
+          <div className="courses-slider-container">
+            <Slider ref={sliderRef} {...settings}>
+              {courses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  totalStudents={Math.floor((stats.totalStudents || 0) / courses.length)}
+                  totalLessons={course.lessons_count}
+                />
+              ))}
+            </Slider>
+          </div>
+        </div>
+      )}
+
+      {/* CTA Section */}
+      <div className="mt-8 sm:mt-12 md:mt-16 px-4">
+        <div className="bg-gradient-to-br from-[#665446] to-[#8B7355] rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 text-center shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40" />
+          
+          <div className="relative z-10 space-y-4 sm:space-y-6">
+            <GraduationCap className="w-10 h-10 sm:w-12 sm:h-12 text-white mx-auto" />
+            <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white font-['Almarai']">
+              مستعد للبدء؟
+            </h3>
+            <p className="text-white/90 font-['Almarai'] text-sm sm:text-base md:text-lg max-w-2xl mx-auto">
+              انضم إلى مجتمعنا التعليمي واستفد من محتوى تعليمي عالي الجودة مع دعم مستمر من المختصين
+            </p>
+            <Link
+              to="/courses"
+              className="inline-flex items-center gap-2 sm:gap-3 bg-white text-[#665446] hover:bg-gray-50 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold font-['Almarai'] text-sm sm:text-base md:text-lg transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
+            >
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>استكشف جميع الدورات</span>
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
-  );
+
+    <style jsx>{`
+      .courses-slider-container .slick-slide > div {
+        display: flex;
+        justify-content: center;
+      }
+      
+      .courses-slider-container .slick-track {
+        display: flex;
+        align-items: stretch;
+      }
+      
+      @media (max-width: 640px) {
+        .courses-slider-container .slick-slide {
+          padding: 0;
+        }
+      }
+
+      @keyframes blob {
+        0% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(20px, -10px) scale(1.05); }
+        66% { transform: translate(-10px, 10px) scale(0.95); }
+        100% { transform: translate(0, 0) scale(1); }
+      }
+      @keyframes blob-slow {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-20px, 10px) scale(1.08); }
+        100% { transform: translate(0, 0) scale(1); }
+      }
+      @keyframes float {
+        0% { transform: translateY(0); opacity: 1; }
+        50% { transform: translateY(-8px); opacity: 0.7; }
+        100% { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes float-slow {
+        0% { transform: translateY(0); opacity: 0.8; }
+        50% { transform: translateY(-5px); opacity: 0.5; }
+        100% { transform: translateY(0); opacity: 0.8; }
+      }
+      @keyframes float-slower {
+        0% { transform: translateY(0); opacity: 0.6; }
+        50% { transform: translateY(-4px); opacity: 0.4; }
+        100% { transform: translateY(0); opacity: 0.6; }
+      }
+
+      .animate-blob {
+        animation: blob 12s ease-in-out infinite;
+      }
+      .animate-blob-slow {
+        animation: blob-slow 16s ease-in-out infinite;
+      }
+      .animate-float {
+        animation: float 4s ease-in-out infinite;
+      }
+      .animate-float-slow {
+        animation: float-slow 6s ease-in-out infinite;
+      }
+      .animate-float-slower {
+        animation: float-slower 8s ease-in-out infinite;
+      }
+    `}</style>
+  </div>
+);
+
 };
 
 export default AboutCourse;

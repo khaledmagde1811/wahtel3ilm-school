@@ -17,8 +17,8 @@ import AdminDashboard from "./Pages/AdminPagde/AdminDashboard";
 import ContantLevel from "./Pages/ContantLevel";
 import ResetPassword from "./Pages/ResetPassword ";
 import ExamForm from './Pages/AdvancedExam/ExamForm';
-import ExamTaking from './Pages/AdvancedExam/StudentExams';
-import ExamResult from './Pages/AdvancedExam/TeacherExams';
+import ExamTaking from './Pages/AdvancedExam/ExamTaking';
+import ExamResult from './Pages/AdvancedExam/ExamResult';
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
@@ -59,7 +59,7 @@ function App() {
 
   useEffect(() => {
     if (!userHasInteracted) return;
-    const p = toast.info('صلِ على النبي ﷺ');
+    const p = toast.info('صلي على النبي ﷺ');
     const d = setTimeout(() =>
       toast.info('سبحان الله وبحمده، سبحان الله العظيم'),
       420000
@@ -106,9 +106,10 @@ function App() {
             <Route path="/community" element={<Community />} />
             <Route path="/monthlyExams" element={<MonthlyExams/>} />
             <Route path="/update-password" element={<UpdatePassword />} />
-            <Route path="/exam/new" element={<ExamForm />} />
-<Route path="/exam/:examId" element={<ExamTaking />} />
-<Route path="/exam-result/:attemptId" element={<ExamResult />} />
+            <Route path="/create-exam" element={<ExamForm />} />
+            <Route path="/teacherexams" element={<TeacherExams />} />
+            <Route path="/studentexams" element={<StudentExams />} />
+
           </Routes>
         </div>
         <Footer />

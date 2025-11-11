@@ -127,7 +127,8 @@ useEffect(() => {
     { to: "/goals", label: "أهداف المدرسة", icon: Target },
     { to: "/articlesManagement", label: "المقالات و التكليف", icon: FileText, notifType: "newArticles" },
     { to: "/community", label: "المجتمع", icon: MessageSquare, notifType: "newPosts" },
-    { to: "/monthlyExams", label: "اختبارات الشهر", icon: BookOpenCheck, notifType: "newExams" },
+    // { to: "/monthlyExams", label: "اختبارات الشهر", icon: BookOpenCheck, notifType: "newExams" },
+    { to: "/studentexams", label: "اختبارات العام الدراسي", icon: BookOpenCheck, notifType: "newExams" },
   ];
 
   const adminMenuItems = [
@@ -135,6 +136,7 @@ useEffect(() => {
     { to: "/statistics", label: "الإحصائيات", icon: BarChart3 },
         { to: "/admin-dashboard/exams", label: "إدارة الامتحانات", icon: Settings, adminOnly: true },
             { to: "/exam/new", label: "إنشاء امتحان جديد", icon: FileText },
+            { to: "/teacherexams", label: "تصحيح الاختبار", icon: FileText },
 
 
   ];

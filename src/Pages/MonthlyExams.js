@@ -125,6 +125,7 @@ const MonthlyExams = () => {
   const [filterMonth, setFilterMonth] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDifficulty, setFilterDifficulty] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // ✅ للتبويبات
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(6);
@@ -494,8 +495,7 @@ const MonthlyExams = () => {
       max_marks: Number(question.max_marks || 1),
       explanation: question.explanation || null,
       image_url: question.image_url || null,
-      topic: question.topic || null,
-      difficulty_level: question.difficulty_level || 'medium'
+      topic: question.topic || null
     };
 
     switch (question.question_type) {
@@ -682,7 +682,8 @@ const MonthlyExams = () => {
       max_marks: Number(dbQuestion.max_marks || 1),
       explanation: dbQuestion.explanation,
       image_url: dbQuestion.image_url,
-      correct_answer: dbQuestion.correct_answer
+      correct_answer: dbQuestion.correct_answer,
+      question_order: dbQuestion.question_order || 0
     };
 
     switch (dbQuestion.question_type) {
@@ -693,34 +694,19 @@ const MonthlyExams = () => {
         };
 
       case QUESTION_TYPES.MULTIPLE_CHOICE: {
-        let options = [];
-        if (dbQuestion.options) {
-          try {
-            options = typeof dbQuestion.options === 'string' ? JSON.parse(dbQuestion.options) : dbQuestion.options;
-          } catch {
-            options = [
-              dbQuestion.option_a || '',
-              dbQuestion.option_b || '',
-              dbQuestion.option_c || '',
-              dbQuestion.option_d || ''
-            ];
-          }
-        } else {
-          options = [
-            dbQuestion.option_a || '',
-            dbQuestion.option_b || '',
-            dbQuestion.option_c || '',
-            dbQuestion.option_d || ''
-          ];
-        }
+        // جلب الخيارات من الأعمدة المباشرة
+        const option_a = dbQuestion.option_a || '';
+        const option_b = dbQuestion.option_b || '';
+        const option_c = dbQuestion.option_c || '';
+        const option_d = dbQuestion.option_d || '';
 
         return {
           ...baseQuestion,
-          options,
-          option_a: options[0] || dbQuestion.option_a || '',
-          option_b: options[1] || dbQuestion.option_b || '',
-          option_c: options[2] || dbQuestion.option_c || '',
-          option_d: options[3] || dbQuestion.option_d || ''
+          option_a,
+          option_b,
+          option_c,
+          option_d,
+          options: [option_a, option_b, option_c, option_d]
         };
       }
 
@@ -903,7 +889,7 @@ const MonthlyExams = () => {
         status: 'in_progress',
         started_at: startTime,
         total_marks: exam.total_marks || 100,
-        score: 0,
+        total_score: 0,
         percentage: 0
       };
 
@@ -3101,11 +3087,11 @@ ${errorAnalytics.length > 0 ? `\nعدد الأخطاء: ${errorAnalytics.length}
                     <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
                       تاريخ البدء *
                     </label>
-                      <input
-                        type="datetime-local"
-                        required
-                        value={examForm.start_date ?? ''}
-                        onChange={(e) => setExamForm({ ...examForm, start_date: e.target.value })}
+                    <input
+                      type="datetime-local"
+                      required
+                      value={examForm.start_date ?? ''}
+                      onChange={(e) => setExamForm({ ...examForm, start_date: e.target.value })}
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                     />
                   </div>
@@ -3114,12 +3100,12 @@ ${errorAnalytics.length > 0 ? `\nعدد الأخطاء: ${errorAnalytics.length}
                     <label className="block text-xs font-bold font-[Almarai]" style={{ color: TEXT_COLOR }}>
                       تاريخ الانتهاء *
                     </label>
-                      <input
-                        type="datetime-local"
-                        required
-                        min={examForm.start_date || undefined}
-                        value={examForm.end_date ?? ''}
-                        onChange={(e) => setExamForm({ ...examForm, end_date: e.target.value })}
+                    <input
+                      type="datetime-local"
+                      required
+                      min={examForm.start_date || undefined}
+                      value={examForm.end_date ?? ''}
+                      onChange={(e) => setExamForm({ ...examForm, end_date: e.target.value })}
                       className="w-full rounded-xl border-2 border-gray-200/80 bg-white px-4 py-2.5 font-[Almarai] outline-none focus:border-[#665446] focus:ring-2 focus:ring-[#665446]/10 transition"
                     />
                   </div>
