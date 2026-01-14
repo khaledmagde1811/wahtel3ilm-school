@@ -5,12 +5,14 @@ import Benfites from '../Commpoanants/HomeCommpanants/Benfites'
 import CallToAction from '../Commpoanants/HomeCommpanants/CallToAction'
 import ContactSection from '../Commpoanants/HomeCommpanants/ContactSection'
 import FAQSection from '../Commpoanants/HomeCommpanants/FAQSection'
+import TazkiyahSection from '../Commpoanants/HomeCommpanants/TazkiyahSection'
 // import MiniDashboardWidgets from '../Commpoanants/HomeCommpanants/MiniDashboardWidgets'
 const HomeLand = () => {
   return (
     <div>
         <HeroSection/>
         <AboutCorse/>
+        <TazkiyahSection/>
         <Benfites/>
         <CallToAction/>
         {/* <MiniDashboardWidgets/> */}
