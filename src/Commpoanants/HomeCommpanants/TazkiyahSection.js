@@ -15,7 +15,7 @@ const TazkiyahSection = () => {
   const [currentWord, setCurrentWord] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
 
-  const highlightWords = ['القلب', 'النفس', 'الروح', 'الفؤاد'];
+  const highlightWords = ['القلب', 'النفس', 'الروح', ];
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 500);

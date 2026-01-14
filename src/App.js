@@ -57,7 +57,7 @@ function App() {
 
   useEffect(() => {
     if (!userHasInteracted) return;
-    const p = toast.info('صلي على النبي ﷺ');
+    const p = toast.info('صلِ على النبي ﷺ');
     const d = setTimeout(() =>
       toast.info('سبحان الله وبحمده، سبحان الله العظيم'),
       420000
